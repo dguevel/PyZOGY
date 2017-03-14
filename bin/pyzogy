@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+import argparse
+import PyZOGY.optimalsub
+
+parser = argparse.ArgumentParser(description="Subtract images using ZOGY algorithm.")
+
+parser.add_argument('--science-image', dest='science_image', help='Science image to subtract')
+parser.add_argument('--science-psf', dest='science_psf', help='PSF for the science image')
+parser.add_argument('--science-mask', dest='science_mask', help='Mask for the science image', default='')
+parser.add_argument('--reference-image', dest='reference_image', help='Reference image to subtract')
+parser.add_argument('--reference-psf', dest='reference_psf', help='PSF for the reference image')
+parser.add_argument('--reference-mask', dest='reference_mask', help='Mask for the reference image', default='')
+parser.add_argument('--n-stamps', dest='n_stamps', help='Numer of stamps to use when fitting the sky level',
+                    default=1, type=int)
+
+args = parser.parse_args()
+science = PyZOGY.optimalsub.ImageClass(args.science_image, args.science_psf, args.science_mask, args.n_stamps)
+reference = PyZOGY.optimalsub.ImageClass(args.reference_image, args.reference_psf, args.reference_mask, args.n_stamps)
+difference = PyZOGY.optimalsub.calculate_difference_image(science, reference)
