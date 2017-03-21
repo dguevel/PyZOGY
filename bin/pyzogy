@@ -6,14 +6,17 @@ parser = argparse.ArgumentParser(description="Subtract images using ZOGY algorit
 
 parser.add_argument('--science-image', dest='science_image', help='Science image to subtract')
 parser.add_argument('--science-psf', dest='science_psf', help='PSF for the science image')
+parser.add_argument('--output', dest='output', help='Output file name')
 parser.add_argument('--science-mask', dest='science_mask', help='Mask for the science image', default='')
 parser.add_argument('--reference-image', dest='reference_image', help='Reference image to subtract')
 parser.add_argument('--reference-psf', dest='reference_psf', help='PSF for the reference image')
 parser.add_argument('--reference-mask', dest='reference_mask', help='Mask for the reference image', default='')
-parser.add_argument('--n-stamps', dest='n_stamps', help='Numer of stamps to use when fitting the sky level',
+parser.add_argument('--n-stamps', dest='n_stamps', help='Number of stamps to use when fitting the sky level',
                     default=1, type=int)
+parser.add_argument('--normalization', dest='normalization', help='Which image to normalize the difference to',
+                    default='reference')
 
 args = parser.parse_args()
-science = PyZOGY.subtract.ImageClass(args.science_image, args.science_psf, args.science_mask, args.n_stamps)
-reference = PyZOGY.subtract.ImageClass(args.reference_image, args.reference_psf, args.reference_mask, args.n_stamps)
-difference = PyZOGY.subtract.calculate_difference_image(science, reference)
+PyZOGY.subtract.run_subtraction(args.science_image, args.reference_image, args.science_psf, args.reference_psf,
+                                args.output, args.science_mask, args.reference_mask, args.n_stamps,
+                                args.normalization)

@@ -83,6 +83,16 @@ def normalize_difference_image(difference, science, reference, normalization='re
     return difference_image
 
 
+def run_subtraction(science_image, reference_image, science_psf, reference_psf, output = 'output.fits',
+                    science_mask = '', reference_mask = '', n_stamps = 1, normalization = 'reference'):
+    """Run full subtraction given filenames and parameters"""
+
+    science = ImageClass(science_image, science_psf, science_mask, n_stamps)
+    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps)
+    difference = calculate_difference_image(science, reference, normalization, output)
+    save_difference_image_to_file(difference, science, normalization, output)
+
+
 def save_difference_image_to_file(difference_image, science, normalization, output):
     """Save difference image to file"""
 
@@ -92,10 +102,3 @@ def save_difference_image_to_file(difference_image, science, normalization, outp
     hdu.header['CONVOL00'] = normalization
     hdu.writeto(output, overwrite=True, output_verify='warn')
 
-
-def save_image_to_file(image, output):
-    """Save difference image to file"""
-
-    hdu = fits.PrimaryHDU(np.real(image))
-    hdu.writeto(output)
-    hdu.writeto(output, overwrite=True)
