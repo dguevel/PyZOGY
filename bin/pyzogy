@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import argparse
-import PyZOGY.optimalsub
+import PyZOGY.subtract
 
 parser = argparse.ArgumentParser(description="Subtract images using ZOGY algorithm.")
 
@@ -14,6 +14,6 @@ parser.add_argument('--n-stamps', dest='n_stamps', help='Numer of stamps to use 
                     default=1, type=int)
 
 args = parser.parse_args()
-science = PyZOGY.optimalsub.ImageClass(args.science_image, args.science_psf, args.science_mask, args.n_stamps)
-reference = PyZOGY.optimalsub.ImageClass(args.reference_image, args.reference_psf, args.reference_mask, args.n_stamps)
-difference = PyZOGY.optimalsub.calculate_difference_image(science, reference)
+science = PyZOGY.subtract.ImageClass(args.science_image, args.science_psf, args.science_mask, args.n_stamps)
+reference = PyZOGY.subtract.ImageClass(args.reference_image, args.reference_psf, args.reference_mask, args.n_stamps)
+difference = PyZOGY.subtract.calculate_difference_image(science, reference)

@@ -1,4 +1,4 @@
-import subutil
+import util
 from astropy.io import fits
 import numpy as np
 
@@ -18,10 +18,10 @@ class ImageClass:
         else:
             self.pixel_mask = fits.getdata(mask_filename)
 
-        self.psf_data = subutil.center_psf(subutil.resize_psf(self.raw_psf_data, self.raw_image_data.shape))
+        self.psf_data = util.center_psf(util.resize_psf(self.raw_psf_data, self.raw_image_data.shape))
         self.zero_point = 1.
-        self.background_std, self.background_counts = subutil.fit_noise(self.raw_image_data, n_stamps=n_stamps)
-        self.image_data = subutil.interpolate_bad_pixels(self.raw_image_data, self.pixel_mask) - self.background_counts
+        self.background_std, self.background_counts = util.fit_noise(self.raw_image_data, n_stamps=n_stamps)
+        self.image_data = util.interpolate_bad_pixels(self.raw_image_data, self.pixel_mask) - self.background_counts
 
 
 def calculate_difference_image(science, reference,
@@ -29,7 +29,7 @@ def calculate_difference_image(science, reference,
     """Calculate the difference image using the Zackey algorithm"""
 
     # match the gains
-    science.zero_point = subutil.solve_iteratively(science, reference)
+    science.zero_point = util.solve_iteratively(science, reference)
     zero_point_ratio = science.zero_point / reference.zero_point
 
     # create required arrays
@@ -99,4 +99,3 @@ def save_image_to_file(image, output):
     hdu = fits.PrimaryHDU(np.real(image))
     hdu.writeto(output)
     hdu.writeto(output, overwrite=True)
-
