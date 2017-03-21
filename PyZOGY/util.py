@@ -87,7 +87,7 @@ def solve_iteratively(science, reference):
     i = 0
     max_iterations = 5
 
-    # trim image to speed fitting
+    # pad image to power of two to speed fft
     old_size = science.image_data.shape
     science_image = pad_to_power2(science.image_data)
     reference_image = pad_to_power2(reference.image_data)
@@ -95,34 +95,58 @@ def solve_iteratively(science, reference):
     reference_psf = resize_psf(center_psf(reference.raw_psf_data), reference_image.shape)
     science_std = pad_to_power2(science.background_std)
     reference_std = pad_to_power2(reference.background_std)
+    science_mask = pad_to_power2(science.pixel_mask)
+    reference_mask = pad_to_power2(reference.pixel_mask)
 
+    # fft arrays
     science_image_fft = np.fft.fft2(science_image)
     reference_image_fft = np.fft.fft2(reference_image)
     science_psf_fft = np.fft.fft2(science_psf)
     reference_psf_fft = np.fft.fft2(reference_psf)
+
+    # convolve masks with psf's to mask all pixels within a psf radius
+    # this is important to prevent convolutions of saturated pixels from affecting the fit
+    science_mask_convolved = np.fft.ifft2(science_psf_fft * np.fft.fft2(science_mask))
+    science_mask_convolved[science_mask_convolved > 0.] == 1
+    science_mask_convolved = np.real(science_mask_convolved).astype(int)
+    reference_mask_convolved = np.fft.ifft2(reference_psf_fft * np.fft.fft2(reference_mask))
+    reference_mask_convolved[reference_mask_convolved > 0.] == 1
+    reference_mask_convolved = np.real(reference_mask_convolved).astype(int)
+
     while abs(gain - gain0) > gain_tolerance:
 
+        # do the convolutions on the images
         denominator = science_std ** 2 * abs(reference_psf_fft) ** 2
         denominator += gain ** 2 * reference_std ** 2 * abs(science_psf_fft) ** 2
+
         science_convolved_image_fft = reference_psf_fft * science_image_fft / np.sqrt(denominator)
         reference_convolved_image_fft = science_psf_fft * reference_image_fft / np.sqrt(denominator)
-        science_convolved_image = np.real(np.fft.ifft2(science_convolved_image_fft))[0: old_size[0], 0: old_size[1]]
-        reference_convolved_image = np.real(np.fft.ifft2(reference_convolved_image_fft))[0: old_size[0], 0: old_size[1]]
-        science_convolved_image_flatten = science_convolved_image.flatten()
-        reference_convolved_image_flatten = reference_convolved_image.flatten()
+
+        science_convolved_image = np.real(np.fft.ifft2(science_convolved_image_fft))[: old_size[0],: old_size[1]]
+        reference_convolved_image = np.real(np.fft.ifft2(reference_convolved_image_fft))[: old_size[0],: old_size[1]]
 
         # remove pixels less than one sigma above sky level to speed fitting
-        science_good_pix = np.where([science_convolved_image_flatten > np.median(science_convolved_image_flatten)
-                                     + np.std(science_convolved_image_flatten)])
-        reference_good_pix = np.where([reference_convolved_image_flatten > np.median(reference_convolved_image_flatten)
-                                       + np.std(reference_convolved_image_flatten)])
+        science_min = np.median(science_convolved_image) + np.std(science_convolved_image)
+        science_convolved_image[science_convolved_image < science_min] = np.nan
 
-        good_pix_in_common = np.intersect1d(science_good_pix, reference_good_pix)
-        science_convolved_image_flatten = science_convolved_image_flatten[good_pix_in_common]
-        reference_convolved_image_flatten = reference_convolved_image_flatten[good_pix_in_common]
+        reference_min = np.median(reference_convolved_image) + np.std(reference_convolved_image)
+        reference_convolved_image[reference_convolved_image < reference_min] = np.nan
 
+        # remove pixels marked in the convolved mask
+        science_convolved_image[science_mask_convolved == 1] = np.nan
+        reference_convolved_image[reference_mask_convolved == 1] = np.nan
+
+        # join the two criteria for pixel inclusion
+        science_good_pix = ~np.isnan(science_convolved_image)
+        reference_good_pix = ~np.isnan(reference_convolved_image)
+        good_pix_in_common = np.logical_and(science_good_pix, reference_good_pix)
+
+        # flatten into 1d arrays of good pixels
+        science_convolved_image_flatten = science_convolved_image[good_pix_in_common]
+        reference_convolved_image_flatten = reference_convolved_image[good_pix_in_common]
+
+        # do a linear robust regression between convolved images
         gain0 = gain
-
         x = reference_convolved_image_flatten
         y = science_convolved_image_flatten
         robust_fit = stats.RLM(y, x).fit()
@@ -137,8 +161,8 @@ def solve_iteratively(science, reference):
 
     print('Fit done in {} iterations'.format(i))
 
-    covariance = robust_fit.bcov_scaled[0, 0]
+    variance = robust_fit.bcov_scaled[0, 0]
     print('Gain = ' + str(gain))
-    print('Gain Variance = ' + str(covariance))
+    print('Gain Variance = ' + str(variance))
 
     return gain
