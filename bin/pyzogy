@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import PyZOGY.subtract
+import numpy as np
 
 parser = argparse.ArgumentParser(description="Subtract images using ZOGY algorithm.")
 
@@ -11,12 +12,19 @@ parser.add_argument('--science-mask', dest='science_mask', help='Mask for the sc
 parser.add_argument('--reference-image', dest='reference_image', help='Reference image to subtract')
 parser.add_argument('--reference-psf', dest='reference_psf', help='PSF for the reference image')
 parser.add_argument('--reference-mask', dest='reference_mask', help='Mask for the reference image', default='')
+
+parser.add_argument('--science-saturation', dest='science_saturation', help='Science image saturation value',
+                    default=np.inf, type=float)
+parser.add_argument('--reference-saturation', dest='reference_saturation', help='Reference image saturation value',
+                    default=np.inf, type=float)
+
 parser.add_argument('--n-stamps', dest='n_stamps', help='Number of stamps to use when fitting the sky level',
                     default=1, type=int)
 parser.add_argument('--normalization', dest='normalization', help='Which image to normalize the difference to',
                     default='reference')
 
+
 args = parser.parse_args()
 PyZOGY.subtract.run_subtraction(args.science_image, args.reference_image, args.science_psf, args.reference_psf,
                                 args.output, args.science_mask, args.reference_mask, args.n_stamps,
-                                args.normalization)
+                                args.normalization, args.science_saturation, args.reference_saturation)

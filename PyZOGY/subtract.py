@@ -6,19 +6,25 @@ import numpy as np
 class ImageClass:
     """Contains the image and relevant parameters"""
 
-    def __init__(self, image_filename, psf_filename, mask_filename='', n_stamps=1):
+    def __init__(self, image_filename, psf_filename, mask_filename='', n_stamps=1, saturation=np.inf):
         self.image_filename = image_filename
         self.psf_filename = psf_filename
 
         self.raw_image_data = fits.getdata(image_filename)
         self.raw_psf_data = fits.getdata(psf_filename)
 
-        if mask_filename == '':
+        self.saturation = saturation
+
+        if mask_filename == '' and np.isfinite(self.saturation):
+            self.pixel_mask = util.make_pixel_mask(self.raw_image_data, self.saturation)
+        elif mask_filename == '' and ~np.isfinite(self.saturation):
             self.pixel_mask = np.zeros(self.raw_image_data.shape)
         else:
             self.pixel_mask = fits.getdata(mask_filename)
 
         self.psf_data = util.center_psf(util.resize_psf(self.raw_psf_data, self.raw_image_data.shape))
+        self.psf_data /= np.sum(self.raw_psf_data)
+
         self.zero_point = 1.
         self.background_std, self.background_counts = util.fit_noise(self.raw_image_data, n_stamps=n_stamps)
         self.image_data = util.interpolate_bad_pixels(self.raw_image_data, self.pixel_mask) - self.background_counts
@@ -37,6 +43,8 @@ def calculate_difference_image(science, reference,
     reference_image = reference.image_data
     science_psf = science.psf_data
     reference_psf = reference.psf_data
+    from astropy.io import fits
+    fits.writeto('test.fits', np.real(reference_psf), overwrite=True)
 
     # do fourier transforms (fft)
     science_image_fft = np.fft.fft2(science_image)
@@ -84,11 +92,12 @@ def normalize_difference_image(difference, science, reference, normalization='re
 
 
 def run_subtraction(science_image, reference_image, science_psf, reference_psf, output = 'output.fits',
-                    science_mask = '', reference_mask = '', n_stamps = 1, normalization = 'reference'):
+                    science_mask = '', reference_mask = '', n_stamps = 1, normalization = 'reference',
+                    science_saturation = False, reference_saturation = False):
     """Run full subtraction given filenames and parameters"""
 
-    science = ImageClass(science_image, science_psf, science_mask, n_stamps)
-    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps)
+    science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation)
+    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation)
     difference = calculate_difference_image(science, reference, normalization, output)
     save_difference_image_to_file(difference, science, normalization, output)
 
