@@ -43,8 +43,6 @@ def calculate_difference_image(science, reference,
     reference_image = reference.image_data
     science_psf = science.psf_data
     reference_psf = reference.psf_data
-    from astropy.io import fits
-    fits.writeto('test.fits', np.real(reference_psf), overwrite=True)
 
     # do fourier transforms (fft)
     science_image_fft = np.fft.fft2(science_image)
