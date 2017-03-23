@@ -3,12 +3,16 @@ import scipy
 import statsmodels.api as stats
 
 
-def make_pixel_mask(image, saturation):
-    """Make a pixel mask that marks saturated pixels"""
+def make_pixel_mask(image, saturation, input_mask=None):
+    """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
 
-    mask = np.zeros(image.shape)
-    mask[image >= saturation] = 1
-    return mask
+    if input_mask != None:
+        new_mask = input_mask
+    else:
+        new_mask = np.zeros(image.shape)
+
+    new_mask[image >= saturation] = 1
+    return new_mask
 
 
 def center_psf(psf):

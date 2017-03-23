@@ -15,12 +15,10 @@ class ImageClass:
 
         self.saturation = saturation
 
-        if mask_filename == '' and np.isfinite(self.saturation):
+        if mask_filename == '':
             self.pixel_mask = util.make_pixel_mask(self.raw_image_data, self.saturation)
-        elif mask_filename == '' and ~np.isfinite(self.saturation):
-            self.pixel_mask = np.zeros(self.raw_image_data.shape)
         else:
-            self.pixel_mask = fits.getdata(mask_filename)
+            self.pixel_mask = util.make_pixel_mask(self.raw_image_data, self.saturation, fits.getdata(mask_filename))
 
         self.psf_data = util.center_psf(util.resize_psf(self.raw_psf_data, self.raw_image_data.shape))
         self.psf_data /= np.sum(self.raw_psf_data)
