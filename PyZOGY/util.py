@@ -25,25 +25,31 @@ def center_psf(psf):
     return psf
 
 
-def fit_noise(data, n_stamps=1):
+def fit_noise(data, n_stamps=1, mode='gaussian'):
     """Find the standard deviation of the image background; returns standard deviation, median"""
 
     median_small = np.zeros([n_stamps, n_stamps])
     std_small = np.zeros([n_stamps, n_stamps])
     for y_stamp in range(n_stamps):
         for x_stamp in range(n_stamps):
-            y_index = [y_stamp * data.shape[0] / n_stamps, (y_stamp + 1) * data.shape[0] / n_stamps]
-            x_index = [x_stamp * data.shape[1] / n_stamps, (x_stamp + 1) * data.shape[1] / n_stamps]
+            y_index = [y_stamp * data.shape[0] // n_stamps, (y_stamp + 1) * data.shape[0] // n_stamps]
+            x_index = [x_stamp * data.shape[1] // n_stamps, (x_stamp + 1) * data.shape[1] // n_stamps]
             stamp_data = data[y_index[0]: y_index[1], x_index[0]: x_index[1]]
-            trimmed_stamp_data = stamp_data[stamp_data < np.percentile(stamp_data, 90)]
-            trimmed_stamp_data = trimmed_stamp_data[trimmed_stamp_data != 0]
-            histogram_data = np.histogram(trimmed_stamp_data, bins=100)
-            x = histogram_data[1][:-1]
-            y = histogram_data[0]
-            guess = [np.max(y), np.median(trimmed_stamp_data), np.std(trimmed_stamp_data)]
-            parameters, covariance = scipy.optimize.curve_fit(gauss, x, y, p0=guess, maxfev=1600)
-            median_small[y_stamp, x_stamp] = parameters[1]
-            std_small[y_stamp, x_stamp] = parameters[2]
+            if mode == 'gaussian':
+                trimmed_stamp_data = stamp_data[stamp_data < np.percentile(stamp_data, 90)]
+                trimmed_stamp_data = trimmed_stamp_data[trimmed_stamp_data != 0]
+                histogram_data = np.histogram(trimmed_stamp_data, bins=100)
+                x = histogram_data[1][:-1]
+                y = histogram_data[0]
+                guess = [np.max(y), np.median(trimmed_stamp_data), np.std(trimmed_stamp_data)]
+                parameters, covariance = scipy.optimize.curve_fit(gauss, x, y, p0=guess, maxfev=1600)
+                median_small[y_stamp, x_stamp] = parameters[1]
+                std_small[y_stamp, x_stamp] = parameters[2]
+            elif mode == 'iqr':
+                quartile25, median, quartile75 = np.percentile(data, (25, 50, 75))
+                median_small[y_stamp, x_stamp] = median
+                # 0.741301109 is a tuning parameter that scales iqr to std
+                std_small[y_stamp, x_stamp] = 0.741301109 * (quartile75 - quartile25)
 
     median = scipy.ndimage.zoom(median_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
     std = scipy.ndimage.zoom(std_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
