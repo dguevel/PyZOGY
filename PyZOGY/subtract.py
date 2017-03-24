@@ -1,5 +1,7 @@
 import util
 from astropy.io import fits
+import astropy
+from distutils.version import LooseVersion
 import numpy as np
 
 
@@ -105,5 +107,9 @@ def save_difference_image_to_file(difference_image, science, normalization, outp
     hdu.header = fits.getheader(science.image_filename)
     hdu.header['PHOTNORM'] = normalization
     hdu.header['CONVOL00'] = normalization
-    hdu.writeto(output, overwrite=True, output_verify='warn')
 
+    # clobber keyword is deprecated in astropy 1.3
+    if LooseVersion(astropy.__version__) < LooseVersion('1.3'):
+        hdu.writeto(output, clobber=True, output_verify='warn')
+    else:
+        hdu.writeto(output, overwrite=True, output_verify='warn')

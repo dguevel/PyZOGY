@@ -25,6 +25,14 @@ parser.add_argument('--normalization', dest='normalization', help='Which image t
 
 
 args = parser.parse_args()
-PyZOGY.subtract.run_subtraction(args.science_image, args.reference_image, args.science_psf, args.reference_psf,
-                                args.output, args.science_mask, args.reference_mask, args.n_stamps,
-                                args.normalization, args.science_saturation, args.reference_saturation)
+PyZOGY.subtract.run_subtraction(args.science_image,
+                                args.reference_image,
+                                args.science_psf,
+                                args.reference_psf,
+                                output=args.output,
+                                science_mask=args.science_mask,
+                                reference_mask=args.reference_mask,
+                                n_stamps=args.n_stamps,
+                                normalization=args.normalization,
+                                science_saturation=args.science_saturation,
+                                reference_saturation=args.reference_saturation)
