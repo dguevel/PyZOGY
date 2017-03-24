@@ -1,4 +1,4 @@
-import util
+from . import util
 from astropy.io import fits
 import astropy
 from distutils.version import LooseVersion
