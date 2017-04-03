@@ -17,12 +17,15 @@ parser.add_argument('--science-saturation', dest='science_saturation', help='Sci
                     default=np.inf, type=float)
 parser.add_argument('--reference-saturation', dest='reference_saturation', help='Reference image saturation value',
                     default=np.inf, type=float)
+parser.add_argument('--science-variance', dest='science_variance', help='Science variance image',
+                    default=np.inf)
+parser.add_argument('--reference-variance', dest='reference_variance', help='Reference variance image',
+                    default=np.inf)
 
 parser.add_argument('--n-stamps', dest='n_stamps', help='Number of stamps to use when fitting the sky level',
                     default=1, type=int)
 parser.add_argument('--normalization', dest='normalization', help='Which image to normalize the difference to',
                     default='reference')
-
 
 args = parser.parse_args()
 PyZOGY.subtract.run_subtraction(args.science_image,
@@ -35,4 +38,6 @@ PyZOGY.subtract.run_subtraction(args.science_image,
                                 n_stamps=args.n_stamps,
                                 normalization=args.normalization,
                                 science_saturation=args.science_saturation,
-                                reference_saturation=args.reference_saturation)
+                                reference_saturation=args.reference_saturation,
+                                science_variance=args.science_variance,
+                                reference_variance=args.reference_variance)
