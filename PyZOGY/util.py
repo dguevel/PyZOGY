@@ -121,10 +121,10 @@ def solve_iteratively(science, reference,
     reference_mask = pad_to_power2(reference.pixel_mask)
 
     # fft arrays
-    science_image_fft = np.fft.fft2(science_image)
-    reference_image_fft = np.fft.fft2(reference_image)
-    science_psf_fft = np.fft.fft2(science_psf)
-    reference_psf_fft = np.fft.fft2(reference_psf)
+    science_image_fft = np.fft.rfft2(science_image)
+    reference_image_fft = np.fft.rfft2(reference_image)
+    science_psf_fft = np.fft.rfft2(science_psf)
+    reference_psf_fft = np.fft.rfft2(reference_psf)
 
     while abs(gain - gain0) > gain_tolerance:
 
@@ -137,10 +137,10 @@ def solve_iteratively(science, reference,
 
         # convolve masks with difference psf to mask all pixels within a psf radius
         # this is important to prevent convolutions of saturated pixels from affecting the fit
-        science_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.fft2(science_mask))
+        science_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.rfft2(science_mask))
         science_mask_convolved[science_mask_convolved > mask_tolerance] = 1
         science_mask_convolved = np.real(science_mask_convolved).astype(int)
-        reference_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.fft2(reference_mask))
+        reference_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.rfft2(reference_mask))
         reference_mask_convolved[reference_mask_convolved > mask_tolerance] = 1
         reference_mask_convolved = np.real(reference_mask_convolved).astype(int)
 
