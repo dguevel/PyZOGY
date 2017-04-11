@@ -81,7 +81,7 @@ def calculate_difference_psf(science, reference):
     reference_psf_fft = np.fft.fft2(reference.psf_data)
     denominator = science.background_std ** 2 * abs(reference_psf_fft) ** 2
     denominator += reference.background_std ** 2 * science.zero_point ** 2 * science_psf_fft
-    denominator *= calculate(calculate_difference_image_zero_point(science, reference))
+    denominator *= calculate_difference_image_zero_point(science, reference)
 
     difference_psf_fft = science.zero_point * science_psf_fft * reference_psf_fft
     difference_psf_fft /= np.sqrt(denominator)
