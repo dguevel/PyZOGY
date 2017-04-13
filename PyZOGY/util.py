@@ -25,7 +25,7 @@ def center_psf(psf):
     return psf
 
 
-def fit_noise(data, n_stamps=1, mode='gaussian'):
+def fit_noise(data, n_stamps=1, mode='iqr'):
     """Find the standard deviation of the image background; returns standard deviation, median"""
 
     median_small = np.zeros([n_stamps, n_stamps])
