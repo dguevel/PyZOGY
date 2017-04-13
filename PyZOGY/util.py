@@ -6,7 +6,7 @@ import statsmodels.api as stats
 def make_pixel_mask(image, saturation, input_mask=None):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
 
-    if input_mask != None:
+    if input_mask is not None:
         new_mask = input_mask
     else:
         new_mask = np.zeros(image.shape)
@@ -25,7 +25,7 @@ def center_psf(psf):
     return psf
 
 
-def fit_noise(data, n_stamps=1, mode='gaussian'):
+def fit_noise(data, n_stamps=1, mode='iqr'):
     """Find the standard deviation of the image background; returns standard deviation, median"""
 
     median_small = np.zeros([n_stamps, n_stamps])
