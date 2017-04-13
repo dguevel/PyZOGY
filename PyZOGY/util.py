@@ -6,7 +6,7 @@ import statsmodels.api as stats
 def make_pixel_mask(image, saturation, input_mask=None):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
 
-    if input_mask != None:
+    if input_mask is not None:
         new_mask = input_mask
     else:
         new_mask = np.zeros(image.shape)
