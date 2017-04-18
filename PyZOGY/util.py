@@ -92,7 +92,7 @@ def pad_to_power2(data):
     while (data.shape[0] > (2 ** n)) or (data.shape[1] > (2 ** n)):
         n += 1
         defecit = [(2 ** n) - data.shape[0], (2 ** n) - data.shape[1]]
-    padded_data = np.pad(data, ((0, defecit[0]), (0, defecit[1])), mode='constant', constant_values=0.)
+    padded_data = np.pad(data, ((0, defecit[0]), (0, defecit[1])), mode='constant', constant_values=np.median(data))
     return padded_data
 
 
@@ -103,7 +103,6 @@ def solve_iteratively(science, reference,
     gain = 1.
     gain0 = 10e5
     i = 0
-
     # pad image to power of two to speed fft
     old_size = science.image_data.shape
     science_image = pad_to_power2(science.image_data)
