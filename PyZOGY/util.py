@@ -118,7 +118,6 @@ def solve_iteratively(science, reference,
 
     science_mask = pad_to_power2(science.pixel_mask)
     reference_mask = pad_to_power2(reference.pixel_mask)
-
     # fft arrays
     science_image_fft = np.fft.fft2(science_image)
     reference_image_fft = np.fft.fft2(reference_image)
@@ -150,8 +149,8 @@ def solve_iteratively(science, reference,
         science_convolved_image_fft = reference_psf_fft * science_image_fft / np.sqrt(denominator)
         reference_convolved_image_fft = science_psf_fft * reference_image_fft / np.sqrt(denominator)
 
-        science_convolved_image = np.real(np.fft.ifft2(science_convolved_image_fft))[: old_size[0], : old_size[1]]
-        reference_convolved_image = np.real(np.fft.ifft2(reference_convolved_image_fft))[: old_size[0], : old_size[1]]
+        science_convolved_image = np.real(np.fft.ifft2(science_convolved_image_fft))
+        reference_convolved_image = np.real(np.fft.ifft2(reference_convolved_image_fft))
 
         # remove pixels less than sigma_cut above sky level to speed fitting
         science_min = np.median(science_convolved_image) + sigma_cut * np.std(science_convolved_image)
@@ -163,6 +162,10 @@ def solve_iteratively(science, reference,
         # remove pixels marked in the convolved mask
         science_convolved_image[science_mask_convolved == 1] = np.nan
         reference_convolved_image[reference_mask_convolved == 1] = np.nan
+
+        # remove power of 2 padding
+        science_convolved_image = science_convolved_image[: old_size[0], : old_size[1]]
+        reference_convolved_image = reference_convolved_image[: old_size[0], : old_size[1]]
 
         # join the two criteria for pixel inclusion
         science_good_pix = ~np.isnan(science_convolved_image)
