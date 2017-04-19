@@ -118,6 +118,7 @@ def solve_iteratively(science, reference,
 
     science_mask = pad_to_power2(science.pixel_mask)
     reference_mask = pad_to_power2(reference.pixel_mask)
+
     # fft arrays
     science_image_fft = np.fft.fft2(science_image)
     reference_image_fft = np.fft.fft2(reference_image)
