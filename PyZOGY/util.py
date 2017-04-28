@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 import statsmodels.api as stats
-
+import matplotlib.pyplot as plt
 
 def make_pixel_mask(image, saturation, input_mask=None):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
@@ -97,7 +97,7 @@ def pad_to_power2(data):
 
 
 def solve_iteratively(science, reference,
-                      mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5, sigma_cut=1):
+                      mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5, sigma_cut=3):
     """Solve for linear fit iteratively"""
 
     gain = 1.
