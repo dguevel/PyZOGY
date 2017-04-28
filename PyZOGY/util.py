@@ -1,7 +1,6 @@
 import numpy as np
 import scipy
 import statsmodels.api as stats
-import matplotlib.pyplot as plt
 
 def make_pixel_mask(image, saturation, input_mask=None):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
@@ -76,6 +75,28 @@ def interpolate_bad_pixels(image, mask, median_size=6):
     return interpolated_image
 
 
+def join_images(science, reference, sigma_cut, min_elements):
+    """Join two images to fittable vectors"""
+
+    # remove pixels less than sigma_cut above sky level to speed fitting
+    science_min = np.median(science) + sigma_cut * np.std(science)
+    science[science < science_min] = np.nan
+
+    reference_min = np.median(reference) + sigma_cut * np.std(reference)
+    reference[reference < reference_min] = np.nan
+
+    # join the two criteria for pixel inclusion
+    science_good_pix = ~np.isnan(science)
+    reference_good_pix = ~np.isnan(reference)
+    good_pix_in_common = np.logical_and(science_good_pix, reference_good_pix)
+
+    # flatten into 1d arrays of good pixels
+    science_flatten = science[good_pix_in_common]
+    reference_flatten = reference[good_pix_in_common]
+
+    return reference_flatten, science_flatten
+
+
 def resize_psf(psf, shape):
     """Resize centered (0,0) psf to larger shape"""
 
@@ -97,7 +118,7 @@ def pad_to_power2(data):
 
 
 def solve_iteratively(science, reference,
-                      mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5, sigma_cut=3):
+                      mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5, sigma_cut=5, min_elements=500):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -153,13 +174,6 @@ def solve_iteratively(science, reference,
         science_convolved_image = np.real(np.fft.ifft2(science_convolved_image_fft))
         reference_convolved_image = np.real(np.fft.ifft2(reference_convolved_image_fft))
 
-        # remove pixels less than sigma_cut above sky level to speed fitting
-        science_min = np.median(science_convolved_image) + sigma_cut * np.std(science_convolved_image)
-        science_convolved_image[science_convolved_image < science_min] = np.nan
-
-        reference_min = np.median(reference_convolved_image) + sigma_cut * np.std(reference_convolved_image)
-        reference_convolved_image[reference_convolved_image < reference_min] = np.nan
-
         # remove pixels marked in the convolved mask
         science_convolved_image[science_mask_convolved == 1] = np.nan
         reference_convolved_image[reference_mask_convolved == 1] = np.nan
@@ -168,19 +182,16 @@ def solve_iteratively(science, reference,
         science_convolved_image = science_convolved_image[: old_size[0], : old_size[1]]
         reference_convolved_image = reference_convolved_image[: old_size[0], : old_size[1]]
 
-        # join the two criteria for pixel inclusion
-        science_good_pix = ~np.isnan(science_convolved_image)
-        reference_good_pix = ~np.isnan(reference_convolved_image)
-        good_pix_in_common = np.logical_and(science_good_pix, reference_good_pix)
-
-        # flatten into 1d arrays of good pixels
-        science_convolved_image_flatten = science_convolved_image[good_pix_in_common]
-        reference_convolved_image_flatten = reference_convolved_image[good_pix_in_common]
-
         # do a linear robust regression between convolved images
         gain0 = gain
-        x = reference_convolved_image_flatten
-        y = science_convolved_image_flatten
+
+        x, y = join_images(science_convolved_image, reference_convolved_image, sigma_cut, min_elements)
+        while (x.size < min_elements) or (y.size < min_elements):
+            sigma_cut -= 0.5
+            x, y = join_images(science_convolved_image, reference_convolved_image, sigma_cut, min_elements)
+            if sigma_cut == 0.:
+                break
+
         robust_fit = stats.RLM(y, x).fit()
         parameters = robust_fit.params
         gain = parameters[0]
