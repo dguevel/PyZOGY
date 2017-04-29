@@ -75,8 +75,11 @@ def interpolate_bad_pixels(image, mask, median_size=6):
     return interpolated_image
 
 
-def join_images(science, reference, sigma_cut, min_elements):
+def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, min_elements):
     """Join two images to fittable vectors"""
+
+    science = np.copy(science_raw)
+    reference = np.copy(reference_raw)
 
     # remove pixels less than sigma_cut above sky level to speed fitting
     science_min = np.median(science) + sigma_cut * np.std(science)
@@ -84,6 +87,10 @@ def join_images(science, reference, sigma_cut, min_elements):
 
     reference_min = np.median(reference) + sigma_cut * np.std(reference)
     reference[reference < reference_min] = np.nan
+
+    # remove pixels marked in the convolved mask
+    science[science_mask == 1] = np.nan
+    reference[reference_mask == 1] = np.nan
 
     # join the two criteria for pixel inclusion
     science_good_pix = ~np.isnan(science)
@@ -105,20 +112,24 @@ def resize_psf(psf, shape):
     return psf_extended
 
 
-def pad_to_power2(data):
+def pad_to_power2(data, value='median'):
     """Pad arrays to the nearest power of two"""
 
+    if value == 'median':
+        constant = np.median(data)
+    elif value == 'zero':
+        constant = 0.
     n = 0
     defecit = [0, 0]
     while (data.shape[0] > (2 ** n)) or (data.shape[1] > (2 ** n)):
         n += 1
         defecit = [(2 ** n) - data.shape[0], (2 ** n) - data.shape[1]]
-    padded_data = np.pad(data, ((0, defecit[0]), (0, defecit[1])), mode='constant', constant_values=np.median(data))
+    padded_data = np.pad(data, ((0, defecit[0]), (0, defecit[1])), mode='constant', constant_values=constant)
     return padded_data
 
 
 def solve_iteratively(science, reference,
-                      mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5, sigma_cut=5, min_elements=500):
+                      mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5, sigma_cut=5, min_elements=800):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -174,24 +185,23 @@ def solve_iteratively(science, reference,
         science_convolved_image = np.real(np.fft.ifft2(science_convolved_image_fft))
         reference_convolved_image = np.real(np.fft.ifft2(reference_convolved_image_fft))
 
-        # remove pixels marked in the convolved mask
-        science_convolved_image[science_mask_convolved == 1] = np.nan
-        reference_convolved_image[reference_mask_convolved == 1] = np.nan
-
         # remove power of 2 padding
         science_convolved_image = science_convolved_image[: old_size[0], : old_size[1]]
         reference_convolved_image = reference_convolved_image[: old_size[0], : old_size[1]]
+        science_mask_convolved = science_mask_convolved[: old_size[0], : old_size[1]]
+        reference_mask_convolved = reference_mask_convolved[: old_size[0], : old_size[1]]
 
         # do a linear robust regression between convolved images
         gain0 = gain
-
-        x, y = join_images(science_convolved_image, reference_convolved_image, sigma_cut, min_elements)
+        sigma = sigma_cut
+        x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
+                           reference_mask_convolved, sigma, min_elements)
         while (x.size < min_elements) or (y.size < min_elements):
-            sigma_cut -= 0.5
-            x, y = join_images(science_convolved_image, reference_convolved_image, sigma_cut, min_elements)
-            if sigma_cut == 0.:
+            sigma -= 0.5
+            x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
+                               reference_mask_convolved, sigma, min_elements)
+            if sigma == 0.:
                 break
-
         robust_fit = stats.RLM(y, x).fit()
         parameters = robust_fit.params
         gain = parameters[0]
