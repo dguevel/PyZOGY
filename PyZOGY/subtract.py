@@ -5,30 +5,27 @@ from distutils.version import LooseVersion
 import numpy as np
 
 
-class ImageClass:
+class ImageClass():
     """Contains the image and relevant parameters"""
 
     def __init__(self, image_filename, psf_filename, mask_filename='', n_stamps=1, saturation=np.inf, variance = np.inf):
         self.image_filename = image_filename
         self.psf_filename = psf_filename
 
-        self.raw_image_data = fits.getdata(image_filename)
-        self.raw_psf_data = fits.getdata(psf_filename)
+        raw_image_data = fits.getdata(image_filename)
+        raw_psf_data = fits.getdata(psf_filename)
 
         self.saturation = saturation
 
-        if mask_filename == '':
-            self.pixel_mask = util.make_pixel_mask(self.raw_image_data, self.saturation)
-        else:
-            self.pixel_mask = util.make_pixel_mask(self.raw_image_data, self.saturation, fits.getdata(mask_filename))
+        self.pixel_mask = util.make_pixel_mask(raw_image_data, self.saturation, mask_filename)
 
-        self.psf_data = util.center_psf(util.resize_psf(self.raw_psf_data, self.raw_image_data.shape))
-        self.psf_data /= np.sum(self.raw_psf_data)
+        self.psf_data = util.center_psf(util.resize_psf(raw_psf_data, raw_image_data.shape))
+        self.psf_data /= np.sum(raw_psf_data)
 
         self.zero_point = 1.
         self.variance = variance
-        self.background_std, self.background_counts = util.fit_noise(self.raw_image_data, n_stamps=n_stamps)
-        self.image_data = util.interpolate_bad_pixels(self.raw_image_data, self.pixel_mask) - self.background_counts
+        self.background_std, self.background_counts = util.fit_noise(raw_image_data, n_stamps=n_stamps)
+        self.image_data = util.interpolate_bad_pixels(raw_image_data, self.pixel_mask) - self.background_counts
 
 
 def calculate_difference_image(science, reference,

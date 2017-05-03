@@ -1,12 +1,13 @@
 import numpy as np
 import scipy
 import statsmodels.api as stats
+from astropy.io import fits
 
-def make_pixel_mask(image, saturation, input_mask=None):
+def make_pixel_mask(image, saturation, input_mask=''):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
 
-    if input_mask is not None:
-        new_mask = input_mask
+    if input_mask != '':
+        new_mask = fits.getdata(input_mask)
     else:
         new_mask = np.zeros(image.shape)
 
@@ -140,10 +141,12 @@ def solve_iteratively(science, reference,
     science_image = pad_to_power2(science.image_data)
     reference_image = pad_to_power2(reference.image_data)
 
-    science_psf = center_psf(resize_psf(science.raw_psf_data, science_image.shape))
-    science_psf /= np.sum(science.raw_psf_data)
-    reference_psf = center_psf(resize_psf(reference.raw_psf_data, reference_image.shape))
-    reference_psf /= np.sum(reference.raw_psf_data)
+    science_raw_psf = fits.getdata(science.psf_filename)
+    science_psf = center_psf(resize_psf(science_raw_psf, science_image.shape))
+    science_psf /= np.sum(science_raw_psf)
+    reference_raw_psf = fits.getdata(reference.psf_filename)
+    reference_psf = center_psf(resize_psf(reference_raw_psf, reference_image.shape))
+    reference_psf /= np.sum(reference_raw_psf)
 
     science_std = pad_to_power2(science.background_std)
     reference_std = pad_to_power2(reference.background_std)
