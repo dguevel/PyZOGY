@@ -5,10 +5,10 @@ from distutils.version import LooseVersion
 import numpy as np
 
 
-class ImageClass():
+class ImageClass:
     """Contains the image and relevant parameters"""
 
-    def __init__(self, image_filename, psf_filename, mask_filename='', n_stamps=1, saturation=np.inf, variance = np.inf):
+    def __init__(self, image_filename, psf_filename, mask_filename='', n_stamps=1, saturation=np.inf, variance=np.inf):
         self.image_filename = image_filename
         self.psf_filename = psf_filename
 
@@ -35,7 +35,6 @@ def calculate_difference_image(science, reference,
     # match the gains
     if gain_ratio == np.inf:
         science.zero_point = util.solve_iteratively(science, reference)
-    zero_point_ratio = science.zero_point / reference.zero_point
 
     # create required arrays
     science_image = science.image_data
@@ -50,10 +49,10 @@ def calculate_difference_image(science, reference,
     reference_psf_fft = np.fft.fft2(reference_psf)
 
     # calculate difference image
-    denominator = science.background_std ** 2 * abs(reference_psf_fft) ** 2
-    denominator += reference.background_std ** 2 * zero_point_ratio ** 2 * abs(science_psf_fft) ** 2
-    difference_image_fft = science_image_fft * reference_psf_fft
-    difference_image_fft -= zero_point_ratio * reference_image_fft * science_psf_fft
+    denominator = science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
+    denominator += reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
+    difference_image_fft = science_image_fft * reference_psf_fft * reference.zero_point
+    difference_image_fft -= reference_image_fft * science_psf_fft * science.zero_point
     difference_image_fft /= np.sqrt(denominator)
     difference_image = np.fft.ifft2(difference_image_fft)
     difference_image = normalize_difference_image(difference_image, science, reference, normalization=normalization)
@@ -65,11 +64,12 @@ def calculate_difference_image(science, reference,
 def calculate_difference_image_zero_point(science, reference):
     """Calculate the flux based zero point of the difference image"""
 
-    zero_point_ratio = science.zero_point / reference.zero_point
-    denominator = science.background_std ** 2 + reference.background_std ** 2 * zero_point_ratio ** 2
-    difference_image_zero_point = zero_point_ratio / np.sqrt(denominator)
+    denominator = science.background_std ** 2 * reference.zero_point ** 2
+    denominator += reference.background_std ** 2 * science.zero_point ** 2
+    difference_image_zero_point = science.zero_point * reference.zero_point / np.sqrt(denominator)
 
     return difference_image_zero_point
+
 
 def calculate_difference_psf(science, reference):
     """Calculate the psf of the difference image"""
@@ -86,10 +86,10 @@ def calculate_difference_psf(science, reference):
     return difference_psf
 
 
-def calculate_matched_filter_image(science, reference, photometry=True, normalization = 'None'):
+def calculate_matched_filter_image(science, reference, photometry=True, normalization='None'):
     """Calculate the matched filter difference image"""
 
-    difference_image = calculate_difference_image(science, reference, normalization=normalization)
+    difference_image = calculate_difference_image(science, reference)
     difference_psf = calculate_difference_psf(science, reference)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
     matched_filter_fft = difference_zero_point * np.fft.fft2(difference_image) * np.conj(np.fft.fft2(difference_psf))
@@ -100,16 +100,10 @@ def calculate_matched_filter_image(science, reference, photometry=True, normaliz
         matched_filter /= 1
 
     if photometry:
-        science_psf_fft = np.fft.fft2(science.psf_data)
-        reference_psf_fft = np.fft.fft2(reference.psf_data)
-        zero_point = science.zero_point ** 2 * reference.zero_point ** 2
-        zero_point *= abs(science_psf_fft) ** 2 * abs(reference_psf_fft) ** 2
-        denominator = reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
-        denominator += science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
-        zero_point /= denominator
-        matched_filter /= np.sum(zero_point)
+        matched_filter = calculate_photometry(matched_filter, science, reference, normalization=normalization)
 
     return matched_filter
+
 
 def normalize_difference_image(difference, science, reference, normalization='reference'):
     """Normalize to user's choice of image"""
@@ -125,9 +119,30 @@ def normalize_difference_image(difference, science, reference, normalization='re
     return difference_image
 
 
-def run_subtraction(science_image, reference_image, science_psf, reference_psf, output = 'output.fits',
-                    science_mask = '', reference_mask = '', n_stamps = 1, normalization = 'reference',
-                    science_saturation = False, reference_saturation = False, science_variance=np.inf,
+def calculate_photometry(matched_filter, science, reference, normalization):
+    """Calculate the photometry from the matched filter image"""
+
+    science_psf_fft = np.fft.fft2(science.psf_data)
+    reference_psf_fft = np.fft.fft2(reference.psf_data)
+    zero_point = science.zero_point ** 2 * reference.zero_point ** 2
+    zero_point *= abs(science_psf_fft) ** 2 * abs(reference_psf_fft) ** 2
+    denominator = reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
+    denominator += science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
+    zero_point /= denominator
+    matched_filter /= np.sum(zero_point)
+    print(np.sum(zero_point))
+    if normalization == 'science':
+        matched_filter = matched_filter * science.zero_point
+    else:
+        matched_filter = matched_filter * reference.zero_point
+    return matched_filter
+
+
+
+
+def run_subtraction(science_image, reference_image, science_psf, reference_psf, output='output.fits',
+                    science_mask='', reference_mask='', n_stamps=1, normalization='reference',
+                    science_saturation=False, reference_saturation=False, science_variance=np.inf,
                     reference_variance=np.inf, matched_filter=False, photometry=True, gain_ratio=np.inf):
     """Run full subtraction given filenames and parameters"""
 
