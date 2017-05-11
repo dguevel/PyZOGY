@@ -76,20 +76,20 @@ def calculate_difference_psf(science, reference):
 
     science_psf_fft = np.fft.fft2(science.psf_data)
     reference_psf_fft = np.fft.fft2(reference.psf_data)
-    denominator = science.background_std ** 2 * abs(reference_psf_fft) ** 2
+    denominator = science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
     denominator += reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
-    denominator *= calculate_difference_image_zero_point(science, reference)
+    difference_zero_point = calculate_difference_image_zero_point(science, reference)
 
     difference_psf_fft = science.zero_point * science_psf_fft * reference_psf_fft
-    difference_psf_fft /= np.sqrt(denominator)
+    difference_psf_fft /= (difference_zero_point * np.sqrt(denominator))
     difference_psf = np.fft.ifft2(difference_psf_fft)
     return difference_psf
 
 
-def calculate_matched_filter_image(science, reference, photometry=True, normalization='None'):
+def calculate_matched_filter_image(science, reference, photometry=True, normalization='none'):
     """Calculate the matched filter difference image"""
 
-    difference_image = calculate_difference_image(science, reference)
+    difference_image = calculate_difference_image(science, reference, normalization='none')
     difference_psf = calculate_difference_psf(science, reference)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
     matched_filter_fft = difference_zero_point * np.fft.fft2(difference_image) * np.conj(np.fft.fft2(difference_psf))
