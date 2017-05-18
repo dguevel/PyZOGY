@@ -5,27 +5,44 @@ from distutils.version import LooseVersion
 import numpy as np
 
 
-class ImageClass:
+class ImageClass(np.ndarray):
     """Contains the image and relevant parameters"""
 
-    def __init__(self, image_filename, psf_filename, mask_filename='', n_stamps=1, saturation=np.inf, variance=np.inf):
-        self.image_filename = image_filename
-        self.psf_filename = psf_filename
+    def __new__(cls, image_filename, psf_filename, mask_filename='', n_stamps=1, saturation=np.inf, variance=np.inf):
+        raw_image = fits.getdata(image_filename)
+        raw_psf = fits.getdata(psf_filename)
+        mask = util.make_mask(raw_image, saturation, mask_filename)
+        background_std, background_counts = util.fit_noise(raw_image, n_stamps=n_stamps)
+        image_data = util.interpolate_bad_pixels(raw_image, mask) - background_counts
 
-        raw_image_data = fits.getdata(image_filename)
-        raw_psf_data = fits.getdata(psf_filename)
+        obj = np.asarray(image_data).view(cls)
+        obj.raw_image = raw_image
+        obj.raw_psf = raw_psf
+        obj.background_std = background_std
+        obj.background_counts = background_counts
+        obj.image_filename = image_filename
+        obj.psf_filename = psf_filename
+        obj.saturation = saturation
+        obj.mask = mask
+        obj.psf = util.center_psf(util.resize_psf(raw_psf, raw_image.shape)) / np.sum(raw_psf)
+        obj.zero_point = 1.
+        obj.variance = variance
 
-        self.saturation = saturation
+        return obj
 
-        self.pixel_mask = util.make_pixel_mask(raw_image_data, self.saturation, mask_filename)
-
-        self.psf_data = util.center_psf(util.resize_psf(raw_psf_data, raw_image_data.shape))
-        self.psf_data /= np.sum(raw_psf_data)
-
-        self.zero_point = 1.
-        self.variance = variance
-        self.background_std, self.background_counts = util.fit_noise(raw_image_data, n_stamps=n_stamps)
-        self.image_data = util.interpolate_bad_pixels(raw_image_data, self.pixel_mask) - self.background_counts
+    def __array_finalize__(self, obj):
+        if obj is None: return
+        self.raw_image = getattr(obj, 'raw_image', None)
+        self.raw_psf = getattr(obj, 'raw_psf', None)
+        self.background_std = getattr(obj, 'background_std', None)
+        self.background_counts = getattr(obj, 'background_counts', None)
+        self.image_filename = getattr(obj, 'image_filename', None)
+        self.psf_filename = getattr(obj, 'psf_filename', None)
+        self.saturation = getattr(obj, 'saturation', None)
+        self.mask = getattr(obj, 'mask', None)
+        self.psf = getattr(obj, 'psf', None)
+        self.zero_point = getattr(obj, 'zero_point', None)
+        self.variance = getattr(obj, 'variance', None)
 
 
 def calculate_difference_image(science, reference,
@@ -37,10 +54,10 @@ def calculate_difference_image(science, reference,
         science.zero_point = util.solve_iteratively(science, reference)
 
     # create required arrays
-    science_image = science.image_data
-    reference_image = reference.image_data
-    science_psf = science.psf_data
-    reference_psf = reference.psf_data
+    science_image = science
+    reference_image = reference
+    science_psf = science.psf
+    reference_psf = reference.psf
 
     # do fourier transforms (fft)
     science_image_fft = np.fft.fft2(science_image)
@@ -74,8 +91,8 @@ def calculate_difference_image_zero_point(science, reference):
 def calculate_difference_psf(science, reference):
     """Calculate the psf of the difference image"""
 
-    science_psf_fft = np.fft.fft2(science.psf_data)
-    reference_psf_fft = np.fft.fft2(reference.psf_data)
+    science_psf_fft = np.fft.fft2(science.psf)
+    reference_psf_fft = np.fft.fft2(reference.psf)
     denominator = science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
     denominator += reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
@@ -122,8 +139,8 @@ def normalize_difference_image(difference, science, reference, normalization='re
 def calculate_photometry(matched_filter, science, reference, normalization):
     """Calculate the photometry from the matched filter image"""
 
-    science_psf_fft = np.fft.fft2(science.psf_data)
-    reference_psf_fft = np.fft.fft2(reference.psf_data)
+    science_psf_fft = np.fft.fft2(science.psf)
+    reference_psf_fft = np.fft.fft2(reference.psf)
     zero_point = science.zero_point ** 2 * reference.zero_point ** 2
     zero_point *= abs(science_psf_fft) ** 2 * abs(reference_psf_fft) ** 2
     denominator = reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2

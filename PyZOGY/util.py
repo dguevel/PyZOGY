@@ -3,7 +3,7 @@ import scipy
 import statsmodels.api as stats
 from astropy.io import fits
 
-def make_pixel_mask(image, saturation, input_mask=''):
+def make_mask(image, saturation, input_mask=''):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
 
     if input_mask != '':
@@ -137,22 +137,20 @@ def solve_iteratively(science, reference,
     gain0 = 10e5
     i = 0
     # pad image to power of two to speed fft
-    old_size = science.image_data.shape
-    science_image = pad_to_power2(science.image_data)
-    reference_image = pad_to_power2(reference.image_data)
+    old_size = science.shape
+    science_image = pad_to_power2(science)
+    reference_image = pad_to_power2(reference)
 
-    science_raw_psf = fits.getdata(science.psf_filename)
-    science_psf = center_psf(resize_psf(science_raw_psf, science_image.shape))
-    science_psf /= np.sum(science_raw_psf)
-    reference_raw_psf = fits.getdata(reference.psf_filename)
-    reference_psf = center_psf(resize_psf(reference_raw_psf, reference_image.shape))
-    reference_psf /= np.sum(reference_raw_psf)
+    science_psf = center_psf(resize_psf(science.raw_psf, science_image.shape))
+    science_psf /= np.sum(science.raw_psf)
+    reference_psf = center_psf(resize_psf(reference.raw_psf, reference_image.shape))
+    reference_psf /= np.sum(reference.raw_psf)
 
     science_std = pad_to_power2(science.background_std)
     reference_std = pad_to_power2(reference.background_std)
 
-    science_mask = pad_to_power2(science.pixel_mask)
-    reference_mask = pad_to_power2(reference.pixel_mask)
+    science_mask = pad_to_power2(science.mask)
+    reference_mask = pad_to_power2(reference.mask)
 
     # fft arrays
     science_image_fft = np.fft.fft2(science_image)
