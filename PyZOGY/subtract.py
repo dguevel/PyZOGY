@@ -12,7 +12,7 @@ class ImageClass(np.ndarray):
         raw_image = fits.getdata(image_filename)
         raw_psf = fits.getdata(psf_filename)
         mask = util.make_mask(raw_image, saturation, mask_filename)
-        background_std, background_counts = util.fit_noise(raw_image, n_stamps=n_stamps)
+        background_std, background_counts = util.fit_noise(raw_image, n_stamps=n_stamps, output_name=image_filename)
         image_data = util.interpolate_bad_pixels(raw_image, mask) - background_counts
 
         obj = np.asarray(image_data).view(cls)

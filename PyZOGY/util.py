@@ -1,7 +1,9 @@
 import numpy as np
 import scipy
 import statsmodels.api as stats
+import astropy
 from astropy.io import fits
+from distutils.version import LooseVersion
 
 def make_mask(image, saturation, input_mask=''):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
@@ -25,7 +27,7 @@ def center_psf(psf):
     return psf
 
 
-def fit_noise(data, n_stamps=1, mode='iqr'):
+def fit_noise(data, n_stamps=1, mode='iqr', output_name='background'):
     """Find the standard deviation of the image background; returns standard deviation, median"""
 
     median_small = np.zeros([n_stamps, n_stamps])
@@ -46,13 +48,23 @@ def fit_noise(data, n_stamps=1, mode='iqr'):
                 median_small[y_stamp, x_stamp] = parameters[1]
                 std_small[y_stamp, x_stamp] = parameters[2]
             elif mode == 'iqr':
-                quartile25, median, quartile75 = np.percentile(data, (25, 50, 75))
+                quartile25, median, quartile75 = np.percentile(stamp_data, (25, 50, 75))
                 median_small[y_stamp, x_stamp] = median
+                print(median, np.mean(stamp_data))
                 # 0.741301109 is a tuning parameter that scales iqr to std
                 std_small[y_stamp, x_stamp] = 0.741301109 * (quartile75 - quartile25)
 
     median = scipy.ndimage.zoom(median_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
     std = scipy.ndimage.zoom(std_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
+
+    if LooseVersion(astropy.__version__) < LooseVersion('1.3'):
+        fits.writeto(output_name.replace('.fits', '.back.fits'), median, clobber=True)
+        fits.writeto(output_name.replace('.fits', '.std.fits'), std, clobber=True)
+    else:
+        fits.writeto(output_name.replace('.fits', '.back.fits'), median, overwrite=True)
+        fits.writeto(output_name.replace('.fits', '.std.fits'), std, overwrite=True)
+
+
 
     return std, median
 
