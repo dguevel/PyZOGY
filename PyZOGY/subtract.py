@@ -159,7 +159,7 @@ def calculate_photometry(matched_filter, science, reference, normalization):
 
 def run_subtraction(science_image, reference_image, science_psf, reference_psf, output='output.fits',
                     science_mask='', reference_mask='', n_stamps=1, normalization='reference',
-                    science_saturation=False, reference_saturation=False, science_variance=np.inf,
+                    science_saturation=np.inf, reference_saturation=np.inf, science_variance=np.inf,
                     reference_variance=np.inf, matched_filter=False, photometry=True, gain_ratio=np.inf):
     """Run full subtraction given filenames and parameters"""
 

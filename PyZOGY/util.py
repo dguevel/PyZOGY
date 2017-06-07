@@ -50,7 +50,6 @@ def fit_noise(data, n_stamps=1, mode='iqr', output_name='background'):
             elif mode == 'iqr':
                 quartile25, median, quartile75 = np.percentile(stamp_data, (25, 50, 75))
                 median_small[y_stamp, x_stamp] = median
-                print(median, np.mean(stamp_data))
                 # 0.741301109 is a tuning parameter that scales iqr to std
                 std_small[y_stamp, x_stamp] = 0.741301109 * (quartile75 - quartile25)
 
