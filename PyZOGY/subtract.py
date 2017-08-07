@@ -21,24 +21,27 @@ class ImageClass:
             self.pixel_mask = util.make_pixel_mask(self.raw_image_data, self.saturation)
         else:
             self.pixel_mask = util.make_pixel_mask(self.raw_image_data, self.saturation, fits.getdata(mask_filename))
+        self.masked_image_data = np.ma.array(self.raw_image_data, mask=self.pixel_mask)
 
         self.psf_data = util.center_psf(util.resize_psf(self.raw_psf_data, self.raw_image_data.shape))
         self.psf_data /= np.sum(self.raw_psf_data)
 
         self.zero_point = 1.
         self.variance = variance
-        self.background_std, self.background_counts = util.fit_noise(self.raw_image_data, n_stamps=n_stamps)
-        self.image_data = util.interpolate_bad_pixels(self.raw_image_data, self.pixel_mask) - self.background_counts
+        self.background_std, self.background_counts = util.fit_noise(self.masked_image_data, n_stamps=n_stamps)
+        self.image_data = util.interpolate_bad_pixels(self.masked_image_data) - self.background_counts
 
 
 def calculate_difference_image(science, reference,
                                normalization='reference', output='output.fits', gain_ratio=np.inf):
-    """Calculate the difference image using the Zackey algorithm"""
+    """Calculate the difference image using the Zackay algorithm"""
 
     # match the gains
     if gain_ratio == np.inf:
         science.zero_point = util.solve_iteratively(science, reference)
-    zero_point_ratio = science.zero_point / reference.zero_point
+        zero_point_ratio = science.zero_point / reference.zero_point
+    else:
+        zero_point_ratio = gain_ratio
 
     # create required arrays
     science_image = science.image_data

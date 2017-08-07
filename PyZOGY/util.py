@@ -33,7 +33,7 @@ def fit_noise(data, n_stamps=1, mode='iqr'):
         for x_stamp in range(n_stamps):
             y_index = [y_stamp * data.shape[0] // n_stamps, (y_stamp + 1) * data.shape[0] // n_stamps]
             x_index = [x_stamp * data.shape[1] // n_stamps, (x_stamp + 1) * data.shape[1] // n_stamps]
-            stamp_data = data[y_index[0]: y_index[1], x_index[0]: x_index[1]]
+            stamp_data = data[y_index[0]: y_index[1], x_index[0]: x_index[1]].compressed()
             if mode == 'gaussian':
                 trimmed_stamp_data = stamp_data[stamp_data < np.percentile(stamp_data, 90)]
                 trimmed_stamp_data = trimmed_stamp_data[trimmed_stamp_data != 0]
@@ -45,10 +45,16 @@ def fit_noise(data, n_stamps=1, mode='iqr'):
                 median_small[y_stamp, x_stamp] = parameters[1]
                 std_small[y_stamp, x_stamp] = parameters[2]
             elif mode == 'iqr':
-                quartile25, median, quartile75 = np.percentile(data, (25, 50, 75))
+                quartile25, median, quartile75 = np.percentile(stamp_data, (25, 50, 75))
                 median_small[y_stamp, x_stamp] = median
                 # 0.741301109 is a tuning parameter that scales iqr to std
                 std_small[y_stamp, x_stamp] = 0.741301109 * (quartile75 - quartile25)
+            elif mode == 'mad':
+                median = np.median(stamp_data)
+                absdev = np.abs(stamp_data - median)
+                mad = np.median(absdev)
+                median_small[y_stamp, x_stamp] = median
+                std_small[y_stamp, x_stamp] = 1.4826 * mad
 
     median = scipy.ndimage.zoom(median_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
     std = scipy.ndimage.zoom(std_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
@@ -62,11 +68,11 @@ def gauss(position, amplitude, median, std):
     return amplitude * np.exp(-(position - median) ** 2 / (2 * std ** 2))
 
 
-def interpolate_bad_pixels(image, mask, median_size=6):
+def interpolate_bad_pixels(image, median_size=6):
     """Interpolate over bad pixels using a global median"""
 
     # from http://stackoverflow.com/questions/18951500/automatically-remove-hot-dead-pixels-from-an-image-in-python
-    pix = np.transpose(np.where(mask == 1))
+    pix = np.transpose(np.where(image.mask))
     blurred = scipy.ndimage.median_filter(image, size=median_size)
     interpolated_image = np.copy(image)
     for y, x in pix:
@@ -78,26 +84,20 @@ def interpolate_bad_pixels(image, mask, median_size=6):
 def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, min_elements):
     """Join two images to fittable vectors"""
 
-    science = np.copy(science_raw)
-    reference = np.copy(reference_raw)
+    science = np.ma.array(science_raw, mask=science_mask, copy=True)
+    reference = np.ma.array(reference_raw, mask=reference_mask, copy=True)
 
     # remove pixels less than sigma_cut above sky level to speed fitting
-    science_min = np.median(science) + sigma_cut * np.std(science)
-    science[science < science_min] = np.nan
+    science_std, science_median = fit_noise(science)
+    science_min = science_median + sigma_cut * science_std
+    science.mask[science < science_min] = True
 
-    reference_min = np.median(reference) + sigma_cut * np.std(reference)
-    reference[reference < reference_min] = np.nan
-
-    # remove pixels marked in the convolved mask
-    science[science_mask == 1] = np.nan
-    reference[reference_mask == 1] = np.nan
-
-    # join the two criteria for pixel inclusion
-    science_good_pix = ~np.isnan(science)
-    reference_good_pix = ~np.isnan(reference)
-    good_pix_in_common = np.logical_and(science_good_pix, reference_good_pix)
+    reference_std, reference_median = fit_noise(reference)
+    reference_min = reference_median + sigma_cut * reference_std
+    reference.mask[reference_raw < reference_min] = True
 
     # flatten into 1d arrays of good pixels
+    good_pix_in_common = ~science.mask & ~reference.mask
     science_flatten = science[good_pix_in_common]
     reference_flatten = reference[good_pix_in_common]
 
