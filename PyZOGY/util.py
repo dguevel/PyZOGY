@@ -97,9 +97,10 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
     reference.mask[reference_raw < reference_min] = True
 
     # flatten into 1d arrays of good pixels
-    good_pix_in_common = ~science.mask & ~reference.mask
-    science_flatten = science[good_pix_in_common]
-    reference_flatten = reference[good_pix_in_common]
+    science.mask |= reference.mask
+    reference.mask |= science.mask
+    science_flatten = science.compressed()
+    reference_flatten = reference.compressed()
 
     return reference_flatten, science_flatten
 

@@ -28,6 +28,9 @@ parser.add_argument('--normalization', dest='normalization', help='Which image t
                     default='reference')
 parser.add_argument('--gain-ratio', help='Ratio of the science zero point to the reference zero point',
                     default=np.inf, type=float)
+parser.add_argument('--gain-mask', help='Additional mask for pixels not to be used in gain matching')
+
+parser.add_argument('--matched-filter', action='store_true', help='Produce the matched filter image instead of the difference image')
 
 args = parser.parse_args()
 PyZOGY.subtract.run_subtraction(args.science_image,
@@ -43,4 +46,6 @@ PyZOGY.subtract.run_subtraction(args.science_image,
                                 reference_saturation=args.reference_saturation,
                                 science_variance=args.science_variance,
                                 reference_variance=args.reference_variance,
-                                gain_ratio=args.gain_ratio)
+                                gain_ratio=args.gain_ratio,
+                                gain_mask=args.gain_mask,
+                                matched_filter=args.matched_filter)

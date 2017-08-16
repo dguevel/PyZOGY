@@ -33,11 +33,15 @@ class ImageClass:
 
 
 def calculate_difference_image(science, reference,
-                               normalization='reference', output='output.fits', gain_ratio=np.inf):
+                               normalization='reference', output='output.fits', gain_ratio=np.inf, gain_mask=None):
     """Calculate the difference image using the Zackay algorithm"""
 
     # match the gains
     if gain_ratio == np.inf:
+        if gain_mask is not None:
+            gain_mask_data = fits.getdata(gain_mask)
+            science.pixel_mask[gain_mask_data == 1] = 1
+            reference.pixel_mask[gain_mask_data == 1] = 1
         science.zero_point = util.solve_iteratively(science, reference)
         zero_point_ratio = science.zero_point / reference.zero_point
     else:
@@ -134,15 +138,15 @@ def normalize_difference_image(difference, science, reference, normalization='re
 def run_subtraction(science_image, reference_image, science_psf, reference_psf, output = 'output.fits',
                     science_mask = '', reference_mask = '', n_stamps = 1, normalization = 'reference',
                     science_saturation = False, reference_saturation = False, science_variance=np.inf,
-                    reference_variance=np.inf, matched_filter=False, photometry=True, gain_ratio=np.inf):
+                    reference_variance=np.inf, matched_filter=False, photometry=True, gain_ratio=np.inf, gain_mask=None):
     """Run full subtraction given filenames and parameters"""
 
-    science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation)
-    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation)
+    science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, gain_mask)
+    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, gain_mask)
     if matched_filter:
         difference=calculate_matched_filter_image(science, reference, normalization=normalization, photometry=photometry)
     else:
-        difference = calculate_difference_image(science, reference, normalization, output, gain_ratio=gain_ratio)
+        difference = calculate_difference_image(science, reference, normalization, output, gain_ratio, gain_mask)
     save_difference_image_to_file(difference, science, normalization, output)
 
 
