@@ -12,7 +12,7 @@ class ImageClass:
         self.image_filename = image_filename
         self.psf_filename = psf_filename
 
-        self.raw_image_data = fits.getdata(image_filename)
+        self.raw_image_data, self.header = fits.getdata(image_filename, header=True)
         self.raw_psf_data = fits.getdata(psf_filename)
 
         self.saturation = saturation
@@ -70,8 +70,6 @@ def calculate_difference_image(science, reference, normalization='reference', ou
     difference_image_fft -= zero_point_ratio * reference_image_fft * science_psf_fft
     difference_image_fft /= np.sqrt(denominator)
     difference_image = np.fft.ifft2(difference_image_fft)
-    difference_image = normalize_difference_image(difference_image, science, reference, normalization=normalization)
-    save_difference_image_to_file(difference_image, science, normalization, output)
 
     return difference_image
 
@@ -100,35 +98,32 @@ def calculate_difference_psf(science, reference):
     return difference_psf
 
 
-def calculate_matched_filter_image(science, reference, photometry=True, normalization = 'None'):
+def calculate_matched_filter_image(difference_image, difference_psf, difference_zero_point):
     """Calculate the matched filter difference image"""
 
-    difference_image = calculate_difference_image(science, reference, normalization=normalization)
-    difference_psf = calculate_difference_psf(science, reference)
-    difference_zero_point = calculate_difference_image_zero_point(science, reference)
     matched_filter_fft = difference_zero_point * np.fft.fft2(difference_image) * np.conj(np.fft.fft2(difference_psf))
     matched_filter = np.fft.ifft2(matched_filter_fft)
+    return matched_filter
 
+def photometric_matched_filter_image(science, reference, matched_filter):
     if (science.variance != np.inf) and (reference.variance != np.inf):
         # add variance correction here
         matched_filter /= 1
 
-    if photometry:
-        science_psf_fft = np.fft.fft2(science.psf_data)
-        reference_psf_fft = np.fft.fft2(reference.psf_data)
-        zero_point = science.zero_point ** 2 * reference.zero_point ** 2
-        zero_point *= abs(science_psf_fft) ** 2 * abs(reference_psf_fft) ** 2
-        denominator = reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
-        denominator += science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
-        zero_point /= denominator
-        matched_filter /= np.sum(zero_point)
+    science_psf_fft = np.fft.fft2(science.psf_data)
+    reference_psf_fft = np.fft.fft2(reference.psf_data)
+    zero_point = science.zero_point ** 2 * reference.zero_point ** 2
+    zero_point *= abs(science_psf_fft) ** 2 * abs(reference_psf_fft) ** 2
+    denominator = reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
+    denominator += science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
+    zero_point /= denominator
+    photometric_matched_filter = matched_filter / np.sum(zero_point)
 
-    return matched_filter
+    return photometric_matched_filter
 
-def normalize_difference_image(difference, science, reference, normalization='reference'):
+def normalize_difference_image(difference, difference_image_zero_point, science, reference, normalization='reference'):
     """Normalize to user's choice of image"""
 
-    difference_image_zero_point = calculate_difference_image_zero_point(science, reference)
     if normalization == 'reference' or normalization == 't':
         difference_image = difference * reference.zero_point / difference_image_zero_point
     elif normalization == 'science' or normalization == 'i':
@@ -142,25 +137,31 @@ def normalize_difference_image(difference, science, reference, normalization='re
 def run_subtraction(science_image, reference_image, science_psf, reference_psf, output = 'output.fits',
                     science_mask = '', reference_mask = '', n_stamps = 1, normalization = 'reference',
                     science_saturation = False, reference_saturation = False, science_variance=np.inf,
-                    reference_variance=np.inf, matched_filter=False, photometry=True, gain_ratio=np.inf, gain_mask=None):
+                    reference_variance=np.inf, matched_filter=None, photometry=True,
+                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False):
     """Run full subtraction given filenames and parameters"""
 
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, gain_mask)
     reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, gain_mask)
-    if matched_filter:
-        difference=calculate_matched_filter_image(science, reference, normalization=normalization, photometry=photometry)
-    else:
-        difference = calculate_difference_image(science, reference, normalization, output, gain_ratio, gain_mask)
-    save_difference_image_to_file(difference, science, normalization, output)
+    difference = calculate_difference_image(science, reference, normalization, output, gain_ratio, gain_mask, use_pixels, show)
+    difference_psf = calculate_difference_psf(science, reference)
+    difference_zero_point = calculate_difference_image_zero_point(science, reference)
+    normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference, normalization)
+    save_difference_image_to_file(normalized_difference, science, normalization, output)
+    fits.writeto(output.replace('.fits', '.psf.fits'), np.real(difference_psf), output_verify='warn', overwrite=True)
+    if matched_filter is not None:
+        matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point) # is this right, or should I use normalized_difference?
+        if photometry:
+            matched_filter_image =  photometric_matched_filter_image(science, reference, matched_filter_image)
+        fits.writeto(matched_filter, matched_filter_image, science.header, output_verify='warn', overwrite=True)
 
 
 def save_difference_image_to_file(difference_image, science, normalization, output):
     """Save difference image to file"""
 
     hdu = fits.PrimaryHDU(np.real(difference_image))
-    hdu.header = fits.getheader(science.image_filename)
+    hdu.header = science.header.copy()
     hdu.header['PHOTNORM'] = normalization
-    hdu.header['CONVOL00'] = normalization
 
     # clobber keyword is deprecated in astropy 1.3
     if LooseVersion(astropy.__version__) < LooseVersion('1.3'):

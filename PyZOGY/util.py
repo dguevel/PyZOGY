@@ -252,8 +252,5 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         print('Gain = {0}'.format(gain))
 
     print('Fit done in {} iterations'.format(i))
-    variance = robust_fit.bcov_scaled[0, 0]
-    print('Gain = ' + str(gain))
-    print('Gain Variance = ' + str(variance))
 
     return gain
