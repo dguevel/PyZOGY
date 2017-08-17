@@ -32,8 +32,8 @@ class ImageClass:
         self.image_data = util.interpolate_bad_pixels(self.masked_image_data) - self.background_counts
 
 
-def calculate_difference_image(science, reference,
-                               normalization='reference', output='output.fits', gain_ratio=np.inf, gain_mask=None):
+def calculate_difference_image(science, reference, normalization='reference', output='output.fits',
+                               gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False):
     """Calculate the difference image using the Zackay algorithm"""
 
     # match the gains
@@ -42,7 +42,11 @@ def calculate_difference_image(science, reference,
             gain_mask_data = fits.getdata(gain_mask)
             science.pixel_mask[gain_mask_data == 1] = 1
             reference.pixel_mask[gain_mask_data == 1] = 1
-        science.zero_point = util.solve_iteratively(science, reference)
+        if use_pixels:
+            min_elements = 800 # pixels in stars
+        else:
+            min_elements = 20 # stars
+        science.zero_point = util.solve_iteratively(science, reference, min_elements=min_elements, use_pixels=use_pixels, show=show)
         zero_point_ratio = science.zero_point / reference.zero_point
     else:
         zero_point_ratio = gain_ratio

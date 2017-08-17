@@ -1,6 +1,8 @@
 import numpy as np
-import scipy
+import scipy.ndimage
 import statsmodels.api as stats
+import matplotlib.pyplot as plt
+import sep
 
 def make_pixel_mask(image, saturation, input_mask=None):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
@@ -81,26 +83,55 @@ def interpolate_bad_pixels(image, median_size=6):
     return interpolated_image
 
 
-def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, min_elements):
+def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, min_elements, use_pixels=False, show=False):
     """Join two images to fittable vectors"""
 
     science = np.ma.array(science_raw, mask=science_mask, copy=True)
     reference = np.ma.array(reference_raw, mask=reference_mask, copy=True)
+    science_std = np.ma.std(science)
+    reference_std = np.ma.std(reference)
+    if use_pixels:
+        # remove pixels less than sigma_cut above sky level to speed fitting
+        science.mask[science < sigma_cut * science_std] = True
+        reference.mask[reference_raw < sigma_cut * reference_std] = True
 
-    # remove pixels less than sigma_cut above sky level to speed fitting
-    science_std, science_median = fit_noise(science)
-    science_min = science_median + sigma_cut * science_std
-    science.mask[science < science_min] = True
+        # flatten into 1d arrays of good pixels
+        science.mask |= reference.mask
+        reference.mask |= science.mask
+        science_flatten = science.compressed()
+        reference_flatten = reference.compressed()
+    else:
+        science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
+        reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=sigma_cut, err=reference_std, mask=np.ascontiguousarray(reference.mask))
+        dx = science_sources['x'] - np.atleast_2d(reference_sources['x']).T
+        dy = science_sources['y'] - np.atleast_2d(reference_sources['y']).T
+        sep2 = dx**2 + dy**2
+        matches = np.min(sep2, axis=1) < 1.
+        inds = np.argmin(sep2, axis=1)
+        science_flatten = science_sources['flux'][inds][matches]
+        reference_flatten = reference_sources['flux'][matches]
 
-    reference_std, reference_median = fit_noise(reference)
-    reference_min = reference_median + sigma_cut * reference_std
-    reference.mask[reference_raw < reference_min] = True
-
-    # flatten into 1d arrays of good pixels
-    science.mask |= reference.mask
-    reference.mask |= science.mask
-    science_flatten = science.compressed()
-    reference_flatten = reference.compressed()
+    if show:
+        plt.ion()
+        plt.figure(1)
+        plt.clf()
+        vmin, vmax = np.percentile(science, (1, 99))
+        plt.imshow(science, vmin=vmin, vmax=vmax)
+        if not use_pixels:
+            plt.plot(reference_sources['x'][matches], reference_sources['y'][matches], 'o', mfc='none', mec='r')
+        
+        plt.figure(2)
+        plt.clf()
+        vmin, vmax = np.percentile(reference, (1, 99))
+        plt.imshow(reference, vmin=vmin, vmax=vmax)
+        if not use_pixels:
+            plt.plot(reference_sources['x'][matches], reference_sources['y'][matches], 'o', mfc='none', mec='r')
+        
+        plt.figure(3)
+        plt.clf()
+        plt.plot(reference_flatten, science_flatten, '.')
+        plt.xlabel('Reference')
+        plt.ylabel('Science')
 
     return reference_flatten, science_flatten
 
@@ -129,8 +160,8 @@ def pad_to_power2(data, value='median'):
     return padded_data
 
 
-def solve_iteratively(science, reference,
-                      mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5, sigma_cut=5, min_elements=800):
+def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=10e-6,
+                      max_iterations=5, sigma_cut=5, min_elements=800, use_pixels=False, show=False):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -196,16 +227,23 @@ def solve_iteratively(science, reference,
         gain0 = gain
         sigma = sigma_cut
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                           reference_mask_convolved, sigma, min_elements)
+                           reference_mask_convolved, sigma, min_elements, use_pixels, show)
         while (x.size < min_elements) or (y.size < min_elements):
             sigma -= 0.5
             x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                               reference_mask_convolved, sigma, min_elements)
+                               reference_mask_convolved, sigma, min_elements, use_pixels, show)
             if sigma == 0.:
                 break
         robust_fit = stats.RLM(y, x).fit()
         parameters = robust_fit.params
         gain = parameters[0]
+        gain1 = np.median(y / x)
+        if show:
+            xfit = np.arange(np.max(x))
+            plt.plot(xfit, gain*xfit, label='gain')
+            plt.plot(xfit, gain1*xfit, label='gain1')
+            plt.legend()
+            raw_input('Press enter to continue to next iteration')
 
         if i == max_iterations:
             break
