@@ -237,11 +237,9 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         robust_fit = stats.RLM(y, x).fit()
         parameters = robust_fit.params
         gain = parameters[0]
-        gain1 = np.median(y / x)
         if show:
             xfit = np.arange(np.max(x))
-            plt.plot(xfit, gain*xfit, label='gain')
-            plt.plot(xfit, gain1*xfit, label='gain1')
+            plt.plot(xfit, gain*xfit)
             plt.legend()
             raw_input('Press enter to continue to next iteration')
 
