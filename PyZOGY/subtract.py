@@ -1,9 +1,13 @@
 from . import util
 from astropy.io import fits
-import astropy
-from distutils.version import LooseVersion
 import numpy as np
 
+# clobber keyword is deprecated in astropy 1.3
+from astropy import __version__
+if __version__ < '1.3':
+    overwrite = {'clobber': True}
+else:
+    overwrite = {'overwrite': True}
 
 class ImageClass:
     """Contains the image and relevant parameters"""
@@ -83,17 +87,16 @@ def calculate_difference_image_zero_point(science, reference):
 
     return difference_image_zero_point
 
-def calculate_difference_psf(science, reference):
+def calculate_difference_psf(science, reference, difference_image_zero_point):
     """Calculate the psf of the difference image"""
 
     science_psf_fft = np.fft.fft2(science.psf_data)
     reference_psf_fft = np.fft.fft2(reference.psf_data)
     denominator = science.background_std ** 2 * abs(reference_psf_fft) ** 2
     denominator += reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
-    denominator *= calculate_difference_image_zero_point(science, reference)
 
     difference_psf_fft = science.zero_point * science_psf_fft * reference_psf_fft
-    difference_psf_fft /= np.sqrt(denominator)
+    difference_psf_fft /= difference_image_zero_point * np.sqrt(denominator)
     difference_psf = np.fft.ifft2(difference_psf_fft)
     return difference_psf
 
@@ -144,16 +147,16 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, gain_mask)
     reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, gain_mask)
     difference = calculate_difference_image(science, reference, normalization, output, gain_ratio, gain_mask, use_pixels, show)
-    difference_psf = calculate_difference_psf(science, reference)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
+    difference_psf = calculate_difference_psf(science, reference, difference_zero_point)
     normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference, normalization)
     save_difference_image_to_file(normalized_difference, science, normalization, output)
-    fits.writeto(output.replace('.fits', '.psf.fits'), np.real(difference_psf), output_verify='warn', overwrite=True)
+    save_difference_psf_to_file(difference_psf, output.replace('.fits', '.psf.fits'))
     if matched_filter is not None:
-        matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point) # is this right, or should I use normalized_difference?
+        matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point)
         if photometry:
             matched_filter_image =  photometric_matched_filter_image(science, reference, matched_filter_image)
-        fits.writeto(matched_filter, matched_filter_image, science.header, output_verify='warn', overwrite=True)
+        fits.writeto(matched_filter, matched_filter_image, science.header, output_verify='warn', **overwrite)
 
 
 def save_difference_image_to_file(difference_image, science, normalization, output):
@@ -162,9 +165,10 @@ def save_difference_image_to_file(difference_image, science, normalization, outp
     hdu = fits.PrimaryHDU(np.real(difference_image))
     hdu.header = science.header.copy()
     hdu.header['PHOTNORM'] = normalization
-
-    # clobber keyword is deprecated in astropy 1.3
-    if LooseVersion(astropy.__version__) < LooseVersion('1.3'):
-        hdu.writeto(output, clobber=True, output_verify='warn')
-    else:
-        hdu.writeto(output, overwrite=True, output_verify='warn')
+    hdu.writeto(output, output_verify='warn', **overwrite)
+        
+def save_difference_psf_to_file(difference_psf, output):
+    real_part = np.real(difference_psf)
+    center = np.array(real_part.shape) / 2
+    centered_psf = np.roll(real_part, center, (0, 1))
+    fits.writeto(output, centered_psf, output_verify='warn', **overwrite)
