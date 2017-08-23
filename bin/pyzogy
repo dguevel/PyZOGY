@@ -26,6 +26,13 @@ parser.add_argument('--n-stamps', dest='n_stamps', help='Number of stamps to use
                     default=1, type=int)
 parser.add_argument('--normalization', dest='normalization', help='Which image to normalize the difference to',
                     default='reference')
+parser.add_argument('--gain-ratio', help='Ratio of the science zero point to the reference zero point',
+                    default=np.inf, type=float)
+parser.add_argument('--gain-mask', help='Additional mask for pixels not to be used in gain matching')
+parser.add_argument('--use-pixels', action='store_true', help='Use pixels for gain matching instead of stars')
+parser.add_argument('--show', action='store_true', help='Show plots during for gain matching')
+
+parser.add_argument('--matched-filter', help='Output filename for matched filter image')
 
 args = parser.parse_args()
 PyZOGY.subtract.run_subtraction(args.science_image,
@@ -40,4 +47,9 @@ PyZOGY.subtract.run_subtraction(args.science_image,
                                 science_saturation=args.science_saturation,
                                 reference_saturation=args.reference_saturation,
                                 science_variance=args.science_variance,
-                                reference_variance=args.reference_variance)
+                                reference_variance=args.reference_variance,
+                                gain_ratio=args.gain_ratio,
+                                gain_mask=args.gain_mask,
+                                use_pixels=args.use_pixels,
+                                show=args.show,
+                                matched_filter=args.matched_filter)
