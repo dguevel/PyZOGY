@@ -23,46 +23,40 @@ def make_mask(image, saturation, input_mask=''):
 def center_psf(psf):
     """Center psf at (0,0) based on max value"""
 
-    peak = np.unravel_index(psf.argmax(), psf.shape)
-    psf = np.roll(psf, -peak[0], 0)
-    psf = np.roll(psf, -peak[1], 1)
+    peak = np.array(np.unravel_index(psf.argmax(), psf.shape))
+    psf = np.roll(psf, -peak, (0, 1))
     return psf
 
 
-def fit_noise(data, n_stamps=1, mode='iqr', output_name='background'):
+def fit_noise(data, n_stamps=1, mode='sep', output_name='background'):
     """Find the standard deviation of the image background; returns standard deviation, median"""
 
     median_small = np.zeros([n_stamps, n_stamps])
     std_small = np.zeros([n_stamps, n_stamps])
-    for y_stamp in range(n_stamps):
-        for x_stamp in range(n_stamps):
-            y_index = [y_stamp * data.shape[0] // n_stamps, (y_stamp + 1) * data.shape[0] // n_stamps]
-            x_index = [x_stamp * data.shape[1] // n_stamps, (x_stamp + 1) * data.shape[1] // n_stamps]
-            stamp_data = data[y_index[0]: y_index[1], x_index[0]: x_index[1]].compressed()
-            if mode == 'gaussian':
-                trimmed_stamp_data = stamp_data[stamp_data < np.percentile(stamp_data, 90)]
-                trimmed_stamp_data = trimmed_stamp_data[trimmed_stamp_data != 0]
-                histogram_data = np.histogram(trimmed_stamp_data, bins=100)
-                x = histogram_data[1][:-1]
-                y = histogram_data[0]
-                guess = [np.max(y), np.median(trimmed_stamp_data), np.std(trimmed_stamp_data)]
-                parameters, covariance = scipy.optimize.curve_fit(gauss, x, y, p0=guess, maxfev=1600)
-                median_small[y_stamp, x_stamp] = parameters[1]
-                std_small[y_stamp, x_stamp] = parameters[2]
-            elif mode == 'iqr':
-                quartile25, median, quartile75 = np.percentile(stamp_data, (25, 50, 75))
-                median_small[y_stamp, x_stamp] = median
-                # 0.741301109 is a tuning parameter that scales iqr to std
-                std_small[y_stamp, x_stamp] = 0.741301109 * (quartile75 - quartile25)
-            elif mode == 'mad':
-                median = np.median(stamp_data)
-                absdev = np.abs(stamp_data - median)
-                mad = np.median(absdev)
-                median_small[y_stamp, x_stamp] = median
-                std_small[y_stamp, x_stamp] = 1.4826 * mad
+    if mode == 'sep':
+        background = sep.Background(np.ascontiguousarray(data.data).byteswap().newbyteorder())
+        median = background.back()
+        std = background.rms()
+    else:
+        for y_stamp in range(n_stamps):
+            for x_stamp in range(n_stamps):
+                y_index = [y_stamp * data.shape[0] // n_stamps, (y_stamp + 1) * data.shape[0] // n_stamps]
+                x_index = [x_stamp * data.shape[1] // n_stamps, (x_stamp + 1) * data.shape[1] // n_stamps]
+                stamp_data = data[y_index[0]: y_index[1], x_index[0]: x_index[1]].compressed()
+                if mode == 'iqr':
+                    quartile25, median, quartile75 = np.percentile(stamp_data, (25, 50, 75))
+                    median_small[y_stamp, x_stamp] = median
+                    # 0.741301109 is a parameter that scales iqr to std
+                    std_small[y_stamp, x_stamp] = 0.741301109 * (quartile75 - quartile25)
+                elif mode == 'mad':
+                    median = np.median(stamp_data)
+                    absdev = np.abs(stamp_data - median)
+                    mad = np.median(absdev)
+                    median_small[y_stamp, x_stamp] = median
+                    std_small[y_stamp, x_stamp] = 1.4826 * mad
 
-    median = scipy.ndimage.zoom(median_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
-    std = scipy.ndimage.zoom(std_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
+        median = scipy.ndimage.zoom(median_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
+        std = scipy.ndimage.zoom(std_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
 
     if LooseVersion(astropy.__version__) < LooseVersion('1.3'):
         fits.writeto(output_name.replace('.fits', '.back.fits'), median, clobber=True)
@@ -72,12 +66,6 @@ def fit_noise(data, n_stamps=1, mode='iqr', output_name='background'):
         fits.writeto(output_name.replace('.fits', '.std.fits'), std, overwrite=True)
 
     return std, median
-
-
-def gauss(position, amplitude, median, std):
-    """Return a gaussian function"""
-
-    return amplitude * np.exp(-(position - median) ** 2 / (2 * std ** 2))
 
 
 def interpolate_bad_pixels(image, median_size=6):
@@ -111,8 +99,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         science_flatten = science.compressed()
         reference_flatten = reference.compressed()
     else:
-        science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=25, err=science_std, mask=np.ascontiguousarray(science.mask))
-        reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=25, err=reference_std, mask=np.ascontiguousarray(reference.mask))
+        science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
+        reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=sigma_cut, err=reference_std, mask=np.ascontiguousarray(reference.mask))
         dx = science_sources['x'] - np.atleast_2d(reference_sources['x']).T
         dy = science_sources['y'] - np.atleast_2d(reference_sources['y']).T
         sep2 = dx**2 + dy**2
@@ -233,7 +221,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         science_mask_convolved = science_mask_convolved[: old_size[0], : old_size[1]]
         reference_mask_convolved = reference_mask_convolved[: old_size[0], : old_size[1]]
 
-        # do a linear robust regression between convolved images
+        # do a linear robust regression between convolved image
         gain0 = gain
         sigma = sigma_cut
 

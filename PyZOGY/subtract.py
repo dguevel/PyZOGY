@@ -134,7 +134,7 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
     if matched_filter is not None:
         matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point)
         if photometry:
-            matched_filter_image =  photometric_matched_filter_image(science, reference, matched_filter_image)
+            matched_filter_image = photometric_matched_filter_image(science, reference, matched_filter_image)
         fits.writeto(matched_filter, np.real(matched_filter_image), science.header, output_verify='warn', **overwrite)
 
 

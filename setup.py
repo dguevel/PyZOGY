@@ -10,6 +10,6 @@ setup(
     scripts=glob(path.join('bin/pyzogy')),
     license='LICENSE.txt',
     description='PyZOGY is a Python implementation of the ZOGY algorithm.',
-    requires=['numpy','astropy','scipy','statsmodels'],
+    requires=['numpy', 'astropy', 'scipy', 'statsmodels', 'matplotlib', 'sep'],
     packages=['PyZOGY'],
 )
