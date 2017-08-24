@@ -1,9 +1,7 @@
 import numpy as np
 import scipy.ndimage
 import statsmodels.api as stats
-import astropy
 from astropy.io import fits
-from distutils.version import LooseVersion
 import matplotlib.pyplot as plt
 import sep
 
@@ -57,13 +55,6 @@ def fit_noise(data, n_stamps=1, mode='sep', output_name='background'):
 
         median = scipy.ndimage.zoom(median_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
         std = scipy.ndimage.zoom(std_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
-
-    if LooseVersion(astropy.__version__) < LooseVersion('1.3'):
-        fits.writeto(output_name.replace('.fits', '.back.fits'), median, clobber=True)
-        fits.writeto(output_name.replace('.fits', '.std.fits'), std, clobber=True)
-    else:
-        fits.writeto(output_name.replace('.fits', '.back.fits'), median, overwrite=True)
-        fits.writeto(output_name.replace('.fits', '.std.fits'), std, overwrite=True)
 
     return std, median
 
