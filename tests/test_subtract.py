@@ -1,1 +1,3 @@
-import PyZOGY.subtract as subtract
+import numpy as np
+from astropy.io import fits
+

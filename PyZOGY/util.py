@@ -24,7 +24,6 @@ def center_psf(psf):
     """Center psf at (0,0) based on max value"""
 
     peak = np.unravel_index(psf.argmax(), psf.shape)
-
     psf = np.roll(psf, -peak[0], 0)
     psf = np.roll(psf, -peak[1], 1)
     return psf
@@ -82,7 +81,7 @@ def gauss(position, amplitude, median, std):
 
 
 def interpolate_bad_pixels(image, median_size=6):
-    """Interpolate over bad pixels using a global median"""
+    """Interpolate over bad pixels using a global median; needs a mask"""
 
     # from http://stackoverflow.com/questions/18951500/automatically-remove-hot-dead-pixels-from-an-image-in-python
     pix = np.transpose(np.where(image.mask))
