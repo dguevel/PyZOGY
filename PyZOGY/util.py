@@ -112,8 +112,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         science_flatten = science.compressed()
         reference_flatten = reference.compressed()
     else:
-        science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
-        reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=sigma_cut, err=reference_std, mask=np.ascontiguousarray(reference.mask))
+        science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=25, err=science_std, mask=np.ascontiguousarray(science.mask))
+        reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=25, err=reference_std, mask=np.ascontiguousarray(reference.mask))
         dx = science_sources['x'] - np.atleast_2d(reference_sources['x']).T
         dy = science_sources['y'] - np.atleast_2d(reference_sources['y']).T
         sep2 = dx**2 + dy**2
@@ -249,11 +249,9 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         robust_fit = stats.RLM(y, x).fit()
         parameters = robust_fit.params
         gain = parameters[0]
-        gain1 = np.median(y / x)
         if show:
             xfit = np.arange(np.max(x))
-            plt.plot(xfit, gain*xfit, label='gain')
-            plt.plot(xfit, gain1*xfit, label='gain1')
+            plt.plot(xfit, gain*xfit)
             plt.legend()
             input('Press enter to continue to next iteration')
 
