@@ -106,6 +106,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         plt.clf()
         vmin, vmax = np.percentile(science, (1, 99))
         plt.imshow(science, vmin=vmin, vmax=vmax)
+        plt.title('Science')
         if not use_pixels:
             plt.plot(reference_sources['x'][matches], reference_sources['y'][matches], 'o', mfc='none', mec='r')
         
@@ -113,6 +114,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         plt.clf()
         vmin, vmax = np.percentile(reference, (1, 99))
         plt.imshow(reference, vmin=vmin, vmax=vmax)
+        plt.title('Reference')
         if not use_pixels:
             plt.plot(reference_sources['x'][matches], reference_sources['y'][matches], 'o', mfc='none', mec='r')
         
