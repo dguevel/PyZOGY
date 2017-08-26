@@ -232,7 +232,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         if show:
             xfit = np.arange(np.max(x))
             plt.plot(xfit, gain*xfit)
-            input('Press enter to continue to next iteration')
+            plt.pause(0.1)
 
         if i == max_iterations:
             break
