@@ -1,5 +1,5 @@
 # PyZOGY
-PyZOGY is a Python implementation of the image subtraction algorithm published by Zackey, Ofek, and Gal-Yam. 
+PyZOGY is a Python implementation of the image subtraction algorithm published by Zackay, Ofek, and Gal-Yam. 
 The algorithm requires two registered images and their PSF's saved as fits files. One can optionally provide
 masks, in fits files where every pixel is either 0 (good) or 1 (bad). Alternatively, the code will mask pixels
 above a user defined threshold (a number) for each image. The code fits the spatially varying background level by dividing 
@@ -48,4 +48,4 @@ normalization = "science" or "reference"
 
 ## Dependencies
 
-PyZOGY requires numpy, astropy, scipy, and statsmodels
+PyZOGY requires numpy, astropy, scipy, sep, and statsmodels
