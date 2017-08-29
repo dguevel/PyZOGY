@@ -1,21 +1,18 @@
 import numpy as np
 import scipy.ndimage
 import statsmodels.api as stats
-from astropy.io import fits
 import matplotlib.pyplot as plt
 import sep
 
 
-def make_mask(image, saturation, input_mask=''):
+def mask_saturated_pix(image, saturation=np.inf, input_mask=None):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
 
-    if input_mask != '':
-        new_mask = fits.getdata(input_mask)
-    else:
-        new_mask = np.zeros(image.shape)
+    if input_mask is None:
+        input_mask = np.zeros(image.shape)
 
-    new_mask[image >= saturation] = 1
-    return new_mask
+    input_mask[image >= saturation] = 1
+    return input_mask.astype(bool)
 
 
 def center_psf(psf):
