@@ -103,6 +103,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         plt.clf()
         vmin, vmax = np.percentile(science, (1, 99))
         plt.imshow(science, vmin=vmin, vmax=vmax)
+        plt.title('Science')
         if not use_pixels:
             plt.plot(reference_sources['x'][matches], reference_sources['y'][matches], 'o', mfc='none', mec='r')
         
@@ -110,6 +111,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         plt.clf()
         vmin, vmax = np.percentile(reference, (1, 99))
         plt.imshow(reference, vmin=vmin, vmax=vmax)
+        plt.title('Reference')
         if not use_pixels:
             plt.plot(reference_sources['x'][matches], reference_sources['y'][matches], 'o', mfc='none', mec='r')
         
@@ -227,8 +229,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         if show:
             xfit = np.arange(np.max(x))
             plt.plot(xfit, gain*xfit)
-            plt.legend()
-            input('Press enter to continue to next iteration')
+            plt.pause(0.1)
 
         if i == max_iterations:
             break
