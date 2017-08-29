@@ -146,8 +146,8 @@ def pad_to_power2(data, value='median'):
 
     if value == 'median':
         constant = np.median(data)
-    else:
-        constant = 0.
+    elif value == 'bool':
+        constant = False
     n = 0
     defecit = [0, 0]
     while (data.shape[0] > (2 ** n)) or (data.shape[1] > (2 ** n)):
@@ -177,8 +177,8 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
     science_std = pad_to_power2(science.background_std)
     reference_std = pad_to_power2(reference.background_std)
 
-    science_mask = pad_to_power2(science.mask)
-    reference_mask = pad_to_power2(reference.mask)
+    science_mask = pad_to_power2(science.mask, value='bool')
+    reference_mask = pad_to_power2(reference.mask, value='bool')
 
     # fft arrays
     science_image_fft = np.fft.fft2(science_image)
