@@ -9,15 +9,15 @@ class ImageClass(np.ndarray):
     def __new__(cls, image_filename, psf_filename, mask_filename=None, n_stamps=1, saturation=np.inf, variance=np.inf):
         raw_image, header = fits.getdata(image_filename, header=True)
         raw_psf = fits.getdata(psf_filename)
-        psf = util.center_psf(util.resize_psf(raw_psf, raw_image.shape)) / np.sum(raw_psf)
+        psf = util.center_psf(util.resize_psf(raw_psf, raw_image.shape), fname=image_filename) / np.sum(raw_psf)
         if mask_filename is not None:
             mask = fits.getdata(mask_filename)
         else:
             mask = mask_filename
-        mask = util.mask_saturated_pix(raw_image, saturation, mask)
+        mask = util.mask_saturated_pix(raw_image, saturation, mask, image_filename)
         masked_image = np.ma.array(raw_image, mask=mask)
-        background_std, background_counts = util.fit_noise(masked_image, n_stamps=n_stamps, output_name=image_filename)
-        image_data = util.interpolate_bad_pixels(masked_image) - background_counts
+        background_std, background_counts = util.fit_noise(masked_image, n_stamps=n_stamps, fname=image_filename)
+        image_data = util.interpolate_bad_pixels(masked_image, fname=image_filename) - background_counts
 
         obj = np.asarray(image_data).view(cls)
         obj.header = header

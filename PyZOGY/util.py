@@ -3,27 +3,33 @@ import scipy.ndimage
 import statsmodels.api as stats
 import matplotlib.pyplot as plt
 import sep
+import logging
 
 
-def mask_saturated_pix(image, saturation=np.inf, input_mask=None):
+def mask_saturated_pix(image, saturation=np.inf, input_mask=None, fname=''):
     """Make a pixel mask that marks saturated pixels; optionally join with input_mask"""
 
     if input_mask is None:
         input_mask = np.zeros(image.shape)
 
     input_mask[image >= saturation] = 1
-    return input_mask.astype(bool)
+    input_mask = input_mask.astype(bool)
+
+    logging.info('{0}Masked {1} saturated pixels'.format(fname + ':', np.size(np.where(input_mask))))
+    return input_mask
 
 
-def center_psf(psf):
+def center_psf(psf, fname=''):
     """Center psf at (0,0) based on max value"""
 
     peak = np.array(np.unravel_index(psf.argmax(), psf.shape))
     psf = np.roll(psf, -peak, (0, 1))
+
+    logging.info('{0}Shifted PSF from {1} to [0 0]'.format(fname + ':', peak))
     return psf
 
 
-def fit_noise(data, n_stamps=1, mode='sep', output_name='background'):
+def fit_noise(data, n_stamps=1, mode='sep', fname=''):
     """Find the standard deviation of the image background; returns standard deviation, median"""
 
     median_small = np.zeros([n_stamps, n_stamps])
@@ -53,10 +59,12 @@ def fit_noise(data, n_stamps=1, mode='sep', output_name='background'):
         median = scipy.ndimage.zoom(median_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
         std = scipy.ndimage.zoom(std_small, [data.shape[0] / float(n_stamps), data.shape[1] / float(n_stamps)])
 
+    logging.info('{0}Global median is {1}'.format(fname + ':', np.mean(median)))
+    logging.info('{0}Global standard deviation is {1}'.format(fname + ':', np.mean(std)))
     return std, median
 
 
-def interpolate_bad_pixels(image, median_size=6):
+def interpolate_bad_pixels(image, median_size=6, fname=''):
     """Interpolate over bad pixels using a global median; needs a mask"""
 
     # from http://stackoverflow.com/questions/18951500/automatically-remove-hot-dead-pixels-from-an-image-in-python
@@ -66,6 +74,7 @@ def interpolate_bad_pixels(image, median_size=6):
     for y, x in pix:
         interpolated_image[y, x] = blurred[y, x]
 
+    logging.info('{0}Interpolated {1} pixels'.format(fname + ':', np.size(np.where(image.mask))))
     return interpolated_image
 
 
@@ -231,12 +240,12 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
             plt.plot(xfit, gain*xfit)
             plt.pause(0.1)
 
+        logging.info('Iteration {0}: Gain = {1}'.format(i, gain))
         if i == max_iterations:
+            logging.warning('Maximum regression ({0}) iterations reached'.format(max_iterations))
             break
         i += 1
-        print('Iteration {0}:'.format(i))
-        print('Gain = {0}'.format(gain))
 
-    print('Fit done in {} iterations'.format(i))
+    logging.info('Fit done in {0} iterations'.format(i))
 
     return gain

@@ -2,6 +2,7 @@ from . import util
 from .image_class import ImageClass
 from astropy.io import fits
 import numpy as np
+import logging
 
 # clobber keyword is deprecated in astropy 1.3
 from astropy import __version__
@@ -59,6 +60,7 @@ def calculate_difference_image_zero_point(science, reference):
     denominator += reference.background_std ** 2 * science.zero_point ** 2
     difference_image_zero_point = science.zero_point * reference.zero_point / np.sqrt(denominator)
 
+    logging.info('Global difference image zero point is {}'.format(np.mean(difference_image_zero_point)))
     return difference_image_zero_point
 
 
@@ -82,6 +84,7 @@ def calculate_matched_filter_image(difference_image, difference_psf, difference_
 
     matched_filter_fft = difference_zero_point * np.fft.fft2(difference_image) * np.conj(np.fft.fft2(difference_psf))
     matched_filter = np.fft.ifft2(matched_filter_fft)
+
     return matched_filter
 
 
@@ -112,6 +115,7 @@ def normalize_difference_image(difference, difference_image_zero_point, science,
     else:
         difference_image = difference
 
+    logging.info('Normalized difference saved to {}'.format(normalization))
     return difference_image
 
 
@@ -131,11 +135,13 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
     save_difference_image_to_file(normalized_difference, science, normalization, output)
     save_difference_psf_to_file(difference_psf, output.replace('.fits', '.psf.fits'))
 
+
     if matched_filter is not None:
         matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point)
         if photometry:
             matched_filter_image = photometric_matched_filter_image(science, reference, matched_filter_image)
         fits.writeto(matched_filter, np.real(matched_filter_image), science.header, output_verify='warn', **overwrite)
+        logging.info('Wrote matched filter image to {}'.format(matched_filter))
 
 
 def save_difference_image_to_file(difference_image, science, normalization, output):
@@ -145,6 +151,7 @@ def save_difference_image_to_file(difference_image, science, normalization, outp
     hdu.header = science.header.copy()
     hdu.header['PHOTNORM'] = normalization
     hdu.writeto(output, output_verify='warn', **overwrite)
+    logging.info('Wrote difference image to {}'.format(output))
 
 
 def save_difference_psf_to_file(difference_psf, output):
@@ -153,3 +160,4 @@ def save_difference_psf_to_file(difference_psf, output):
     center = np.array(real_part.shape) / 2
     centered_psf = np.roll(real_part, center.astype(int), (0, 1))
     fits.writeto(output, centered_psf, output_verify='warn', **overwrite)
+    logging.info('Wrote difference psf to {}'.format(output))

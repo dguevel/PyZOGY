@@ -2,6 +2,7 @@
 import argparse
 import PyZOGY.subtract
 import numpy as np
+import logging
 
 parser = argparse.ArgumentParser(description="Subtract images using ZOGY algorithm.")
 
@@ -34,7 +35,12 @@ parser.add_argument('--show', action='store_true', help='Show plots during for g
 
 parser.add_argument('--matched-filter', help='Output filename for matched filter image')
 
+parser.add_argument('--log', dest='log', help='Log output file', default='pyzogy.log')
+
 args = parser.parse_args()
+
+logging.basicConfig(filename=args.log, level=logging.DEBUG, filemode='w')
+
 PyZOGY.subtract.run_subtraction(args.science_image,
                                 args.reference_image,
                                 args.science_psf,

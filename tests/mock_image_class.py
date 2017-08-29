@@ -4,7 +4,7 @@ from astropy.io import fits
 class MockImageClass(np.ndarray):
     """Creates a mock version of ImageClass for testing"""
 
-    def __new__(cls, image_filename='', psf_filename='', mask_filename='', n_stamps=1, saturation=np.inf, variance=np.inf, shape=(50,50)):
+    def __new__(cls, image_filename='', psf_filename='', mask_filename=None, n_stamps=1, saturation=np.inf, variance=np.inf, shape=(50,50)):
         raw_image, header = np.ones(shape), fits.Header()#fits.getdata(image_filename, header=True)
         raw_psf = np.ones(shape)
         mask = np.zeros(shape)
