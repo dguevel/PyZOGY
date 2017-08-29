@@ -28,6 +28,11 @@ with any of the following options:
 --reference-saturation number
 --n-stamps "number"
 --normalization "science" or "reference"
+--gain-ratio number
+--gain-mask "mask-filename"
+--use-pixels
+--show
+--matched-filter "your-matched-filter-output"
 ```
 To use in Python, type:
 ```
@@ -44,8 +49,13 @@ science_saturation = number
 reference_saturation = number
 n_stamps = number
 normalization = "science" or "reference"
+gain_ratio = number
+gain-mask = "mask-filename"
+use-pixels = boolean
+show = boolean
+matched-filter = "your-matched-filter-output"
 ```
 
 ## Dependencies
 
-PyZOGY requires numpy, astropy, scipy, sep, and statsmodels
+PyZOGY requires numpy, astropy, scipy, sep, matplotlib, and statsmodels
