@@ -83,10 +83,64 @@ def calculate_matched_filter_image(difference_image, difference_psf, difference_
     return matched_filter
 
 
+def source_noise(image, kernel):
+    """Calculate source noise correction for matched filter image"""
+
+    if image.variance is None:
+        image.variance = np.copy(image.raw_image) + image.read_noise
+
+    image_variance_corr = np.fft.ifft2(np.fft.fft2(image.variance) * np.fft.fft2(kernel ** 2))
+
+    return image_variance_corr
+
+
+def noise_kernels(science, reference):
+    """Calculate the convolution kernels used in the noise correction"""
+
+    science_psf_fft = np.fft.fft2(science.psf)
+    reference_psf_fft = np.fft.fft2(reference.psf)
+    denominator = reference.background_std ** 2 * science.zero_point ** 2 * abs(science_psf_fft) ** 2
+    denominator += science.background_std ** 2 * reference.zero_point ** 2 * abs(reference_psf_fft) ** 2
+
+    science_kernel_fft = science.zero_point * reference.zero_point ** 2
+    science_kernel_fft *= np.conj(reference_psf_fft) * abs(science_psf_fft) ** 2
+    science_kernel_fft /= denominator
+    science_kernel = np.fft.ifft2(science_kernel_fft)
+
+    reference_kernel_fft = reference.zero_point * science.zero_point ** 2
+    reference_kernel_fft *= np.conj(science_psf_fft) * abs(reference_psf_fft) ** 2
+    reference_kernel_fft /= denominator
+    reference_kernel = np.fft.ifft2(reference_kernel_fft)
+
+    return science_kernel, reference_kernel
+
+
+def registration_noise(image, kernel):
+    """Calculate the registration noise for the noise correction"""
+
+    matched_part = np.fft.ifft2(np.fft.fft2(image) * np.fft.fft2(kernel))
+    gradient = np.gradient(matched_part)
+    # registration_noise is (x, y), gradient is (row, col)
+    reg_variance = image.registration_noise[1] ** 2 * gradient[0] ** 2
+    reg_variance += image.registration_noise[0] ** 2 * gradient[1] ** 2
+
+    return reg_variance
+
+
+def correct_matched_filter_image(science, reference):
+    """Calculate the noise corrected matched filter image"""
+
+    science_kernel, reference_kernel = noise_kernels(science, reference)
+    science_source_noise = source_noise(science, science_kernel)
+    reference_source_noise = source_noise(reference, reference_kernel)
+    science_registration_noise = registration_noise(science, science_kernel)
+    reference_registration_noise = registration_noise(reference, reference_kernel)
+
+    return science_source_noise + reference_source_noise + science_registration_noise + reference_registration_noise
+
+
 def photometric_matched_filter_image(science, reference, matched_filter):
-    if (science.variance != np.inf) and (reference.variance != np.inf):
-        # add variance correction here
-        matched_filter /= 1
+    """Calculate the photometry on the matched filter image"""
 
     science_psf_fft = np.fft.fft2(science.psf)
     reference_psf_fft = np.fft.fft2(reference.psf)
@@ -116,13 +170,14 @@ def normalize_difference_image(difference, difference_image_zero_point, science,
 
 def run_subtraction(science_image, reference_image, science_psf, reference_psf, output='output.fits',
                     science_mask=None, reference_mask=None, n_stamps=1, normalization='reference',
-                    science_saturation=False, reference_saturation=False, science_variance=np.inf,
-                    reference_variance=np.inf, matched_filter=None, photometry=True,
-                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99):
+                    science_saturation=False, reference_saturation=False, science_variance=None,
+                    reference_variance=None, matched_filter=None, photometry=False,
+                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99,
+                    corrected=False):
     """Run full subtraction given filenames and parameters"""
 
-    science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, gain_mask)
-    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, gain_mask)
+    science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, science_variance)
+    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, reference_variance)
     difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, use_pixels, show, percent)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
     difference_psf = calculate_difference_psf(science, reference, difference_zero_point)
@@ -133,8 +188,12 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
 
     if matched_filter is not None:
         matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point)
+        if photometry and corrected:
+            logging.error('Photometric matched filter and noise corrected matched filter are incompatible')
         if photometry:
             matched_filter_image = photometric_matched_filter_image(science, reference, matched_filter_image)
+        elif corrected:
+            matched_filter_image /= np.sqrt(correct_matched_filter_image(science, reference))
         fits.writeto(matched_filter, np.real(matched_filter_image), science.header, output_verify='warn', **overwrite)
         logging.info('Wrote matched filter image to {}'.format(matched_filter))
 

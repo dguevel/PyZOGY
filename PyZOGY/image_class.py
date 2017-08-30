@@ -6,7 +6,8 @@ from PyZOGY import util
 class ImageClass(np.ndarray):
     """Contains the image and relevant parameters"""
 
-    def __new__(cls, image_filename, psf_filename, mask_filename=None, n_stamps=1, saturation=np.inf, variance=np.inf):
+    def __new__(cls, image_filename, psf_filename, mask_filename=None, n_stamps=1,
+                saturation=None, variance=None, read_noise=0, registration_noise=(0, 0)):
         raw_image, header = fits.getdata(image_filename, header=True)
         raw_psf = fits.getdata(psf_filename)
         psf = util.center_psf(util.resize_psf(raw_psf, raw_image.shape), fname=image_filename) / np.sum(raw_psf)
@@ -32,6 +33,8 @@ class ImageClass(np.ndarray):
         obj.psf = psf
         obj.zero_point = 1.
         obj.variance = variance
+        obj.read_noise = read_noise
+        obj.registration_noise = registration_noise
 
         return obj
 
@@ -50,3 +53,5 @@ class ImageClass(np.ndarray):
         self.psf = getattr(obj, 'psf', None)
         self.zero_point = getattr(obj, 'zero_point', None)
         self.variance = getattr(obj, 'variance', None)
+        self.read_noise = getattr(obj, 'read_noise', None)
+        self.registration_noise = getattr(obj, 'registration_noise', None)

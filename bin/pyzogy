@@ -19,9 +19,9 @@ parser.add_argument('--science-saturation', dest='science_saturation', help='Sci
 parser.add_argument('--reference-saturation', dest='reference_saturation', help='Reference image saturation value',
                     default=np.inf, type=float)
 parser.add_argument('--science-variance', dest='science_variance', help='Science variance image',
-                    default=np.inf)
+                    default=None)
 parser.add_argument('--reference-variance', dest='reference_variance', help='Reference variance image',
-                    default=np.inf)
+                    default=None)
 
 parser.add_argument('--n-stamps', dest='n_stamps', help='Number of stamps to use when fitting the sky level',
                     default=1, type=int)
@@ -34,6 +34,8 @@ parser.add_argument('--use-pixels', action='store_true', help='Use pixels for ga
 parser.add_argument('--show', action='store_true', help='Show plots during for gain matching')
 
 parser.add_argument('--matched-filter', help='Output filename for matched filter image')
+parser.add_argument('--correct', action='store_true', help='Correct matched filter image with noise')
+parser.add_argument('--photometry', action='store_true', help='Correct matched filter image to do photometry')
 
 parser.add_argument('--log', dest='log', help='Log output file', default='pyzogy.log')
 parser.add_argument('--percent', dest='percent', help='Pixel percentile for gain matching on pixels',
@@ -62,4 +64,6 @@ PyZOGY.subtract.run_subtraction(args.science_image,
                                 use_pixels=args.use_pixels,
                                 show=args.show,
                                 matched_filter=args.matched_filter,
-                                percent=args.percent)
+                                percent=args.percent,
+                                corrected=args.correct,
+                                photometry=args.photometry)
