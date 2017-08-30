@@ -29,7 +29,7 @@ def center_psf(psf, fname=''):
     return psf
 
 
-def fit_noise(data, n_stamps=1, mode='sep', fname=''):
+def fit_noise(data, n_stamps=1, mode='iqr', fname=''):
     """Find the standard deviation of the image background; returns standard deviation, median"""
 
     median_small = np.zeros([n_stamps, n_stamps])
@@ -78,7 +78,7 @@ def interpolate_bad_pixels(image, median_size=6, fname=''):
     return interpolated_image
 
 
-def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, use_pixels=False, show=False):
+def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, use_pixels=False, show=False, percent=99):
     """Join two images to fittable vectors"""
 
     science = np.ma.array(science_raw, mask=science_mask, copy=True)
@@ -87,14 +87,17 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
     reference_std = np.ma.std(reference)
     if use_pixels:
         # remove pixels less than sigma_cut above sky level to speed fitting
-        science.mask[science < sigma_cut * science_std] = True
-        reference.mask[reference_raw < sigma_cut * reference_std] = True
+        science.mask[science <= np.percentile(science.compressed(), percent)] = True#sigma_cut * science_std] = True
+        reference.mask[reference <= np.percentile(reference.compressed(), percent)] = True#sigma_cut * reference_std] = True
 
         # flatten into 1d arrays of good pixels
         science.mask |= reference.mask
         reference.mask |= science.mask
         science_flatten = science.compressed()
         reference_flatten = reference.compressed()
+        logging.info('Found {0} usable pixels for gain matching'.format(science_flatten.size))
+        if science_flatten.size == 0:
+            logging.error('No pixels in common at this percentile ({0}); lower and try again'.format(percent))
     else:
         science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
         reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=sigma_cut, err=reference_std, mask=np.ascontiguousarray(reference.mask))
@@ -158,7 +161,7 @@ def pad_to_power2(data, value='median'):
 
 
 def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=10e-6,
-                      max_iterations=5, sigma_cut=5, min_elements=800, use_pixels=False, show=False):
+                      max_iterations=5, sigma_cut=5, use_pixels=False, show=False, percent=99):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -225,13 +228,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         sigma = sigma_cut
 
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                           reference_mask_convolved, sigma, use_pixels, show)
-        while (x.size < min_elements) or (y.size < min_elements):
-            sigma -= 0.5
-            x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                               reference_mask_convolved, sigma, use_pixels, show)
-            if sigma == 0.:
-                break
+                           reference_mask_convolved, sigma, use_pixels, show, percent)
         robust_fit = stats.RLM(y, x).fit()
         parameters = robust_fit.params
         gain = parameters[0]

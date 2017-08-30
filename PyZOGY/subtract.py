@@ -12,7 +12,7 @@ else:
     overwrite = {'overwrite': True}
 
 
-def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False):
+def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99):
     """Calculate the difference image using the Zackay algorithm"""
 
     # match the gains
@@ -21,12 +21,7 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
             gain_mask_data = fits.getdata(gain_mask)
             science.mask[gain_mask_data == 1] = 1
             reference.mask[gain_mask_data == 1] = 1
-        if use_pixels:
-            min_elements = 800  # pixels in stars
-        else:
-            min_elements = 20  # stars
-        science.zero_point = util.solve_iteratively(science, reference,
-                                                    min_elements=min_elements, use_pixels=use_pixels, show=show)
+        science.zero_point = util.solve_iteratively(science, reference, use_pixels=use_pixels, show=show, percent=percent)
     else:
         science.zero_point = gain_ratio
 
@@ -123,12 +118,12 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
                     science_mask=None, reference_mask=None, n_stamps=1, normalization='reference',
                     science_saturation=False, reference_saturation=False, science_variance=np.inf,
                     reference_variance=np.inf, matched_filter=None, photometry=True,
-                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False):
+                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99):
     """Run full subtraction given filenames and parameters"""
 
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, gain_mask)
     reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, gain_mask)
-    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, use_pixels, show)
+    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, use_pixels, show, percent)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
     difference_psf = calculate_difference_psf(science, reference, difference_zero_point)
     normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference, normalization)
