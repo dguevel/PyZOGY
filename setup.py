@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 from os import path
 from glob import glob
 
@@ -12,4 +12,5 @@ setup(
     description='PyZOGY is a Python implementation of the ZOGY algorithm.',
     requires=['numpy', 'astropy', 'scipy', 'statsmodels', 'matplotlib', 'sep'],
     packages=['PyZOGY'],
+	test_suite = 'PyZOGY.test'
 )
