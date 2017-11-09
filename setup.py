@@ -4,10 +4,10 @@ from glob import glob
 
 setup(
     name='PyZOGY',
-    version='1.0.0',
+    version='0.0.1',
     author='David Guevel',
     author_email='guevel.david@gmail.com',
-    scripts=glob(path.join('bin/pyzogy')),
+	entry_points = {'console_scripts': ['pyzogy = PyZOGY.__main__ : main']},
     license='LICENSE.txt',
     description='PyZOGY is a Python implementation of the ZOGY algorithm.',
     requires=['numpy', 'astropy', 'scipy', 'statsmodels', 'matplotlib', 'sep'],
