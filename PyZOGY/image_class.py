@@ -17,7 +17,7 @@ class ImageClass(np.ndarray):
         image_filename (str): Name of the FITS file containing the image.
         psf_filename (str, optional): Name of the FITS file containing the PSF.
         mask_filename (str, optional): Name of the FITS file containing the bad pixel 
-            mask array with 1 indicating masking and 0 indicating no masking.
+        mask array with 1 indicating masking and 0 indicating no masking.
         n_stamps (int, optional): Number of stamps to use for background estimation.
         saturation (float, optional): Maximum usable value in the FITS image.
         read_noise (float, optional): Read noise of the FITs image.
