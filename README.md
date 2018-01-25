@@ -9,6 +9,8 @@ the science image or the reference image.
 
 The details of the algorithm can be found at http://iopscience.iop.org/article/10.3847/0004-637X/830/1/27/meta
 
+If you use this code for a publication, please cite the above paper and our Zenodo DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1043973.svg)](https://doi.org/10.5281/zenodo.1043973)
+
 ## Installation
 Clone the repository and run `python setup.py install`
 
