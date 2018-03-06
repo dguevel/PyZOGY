@@ -239,9 +239,9 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
 
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
                            reference_mask_convolved, sigma, use_pixels, show, percent)
-        robust_fit = stats.RLM(y, x).fit()
+        robust_fit = stats.RLM(y, stats.add_constant(x), stats.robust.norms.TukeyBiweight()).fit()
         parameters = robust_fit.params
-        gain = parameters[0]
+        gain = parameters[-1]
         if show:
             xfit = np.arange(np.max(x))
             plt.plot(xfit, gain*xfit)
