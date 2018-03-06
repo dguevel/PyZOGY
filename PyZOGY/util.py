@@ -99,15 +99,25 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         if science_flatten.size == 0:
             logging.error('No pixels in common at this percentile ({0}); lower and try again'.format(percent))
     else:
+        pixstack_limit = np.product(science.shape) // 20
+        if pixstack_limit > 300000:
+            sep.set_extract_pixstack(pixstack_limit)
         science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
         reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=sigma_cut, err=reference_std, mask=np.ascontiguousarray(reference.mask))
-        dx = science_sources['x'] - np.atleast_2d(reference_sources['x']).T
-        dy = science_sources['y'] - np.atleast_2d(reference_sources['y']).T
-        sep2 = dx**2 + dy**2
-        matches = np.min(sep2, axis=1) < 1.
-        inds = np.argmin(sep2, axis=1)
+        dx = science_sources['x'] - reference_sources['x'][:, np.newaxis]
+        dy = science_sources['y'] - reference_sources['y'][:, np.newaxis]
+        separation = np.sqrt(dx**2 + dy**2)
+        sigma_eqv = np.sqrt((reference_sources['a']**2 + reference_sources['b']**2) / 2.)
+        med_sigma = np.median(sigma_eqv) # median sigma if all sources were circular Gaussians
+        absdev_sigma = np.abs(sigma_eqv - med_sigma)
+        std_sigma = np.median(absdev_sigma) * np.sqrt(np.pi / 2)
+        matches = (np.min(separation, axis=1) < 2. * sigma_eqv) & (absdev_sigma < 3 * std_sigma)
+        inds = np.argmin(separation, axis=1)
         science_flatten = science_sources['flux'][inds][matches]
         reference_flatten = reference_sources['flux'][matches]
+        logging.info('Found {0} stars in common for gain matching'.format(science_flatten.size))
+        if science_flatten.size <= 1:
+            logging.error('No stars in common at {0}-sigma; lower and try again'.format(sigma_cut))
 
     if show:
         plt.ion()
