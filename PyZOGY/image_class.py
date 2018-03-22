@@ -1,10 +1,39 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 from astropy.io import fits
 from PyZOGY import util
 
 
 class ImageClass(np.ndarray):
-    """Contains the image and relevant parameters"""
+    """
+    Handles images used by subtraction functions.
+
+    This class handles image data, PSF data, mask data, and other parameters needed for 
+    subtraction. It is a subclass of numpy ndarray, so the image data can be accessed
+    like a normal numpy array.
+    
+    Args:
+        image_filename (str): Name of the FITS file containing the image.
+        psf_filename (str, optional): Name of the FITS file containing the PSF.
+        mask_filename (str, optional): Name of the FITS file containing the bad pixel 
+        mask array with 1 indicating masking and 0 indicating no masking.
+        n_stamps (int, optional): Number of stamps to use for background estimation.
+        saturation (float, optional): Maximum usable value in the FITS image.
+        read_noise (float, optional): Read noise of the FITs image.
+
+    Attributes:
+        header (astropy.io.fits.Header): Header from the image FITS file.
+        raw_image (numpy.ndarray): Unaltered data from the image FITS file.
+        raw_psf (numpy.ndarray): Unaltered data frin tge PSF FITS file.
+        background_std (float): Standard deviation of the image.
+        image_filename (str): Filename of the image FITS.
+        psf_filename (str): Filename of the PSF FITS.
+        saturation (float): Maxiumum usable value in the FITS image.
+        mask (numpy.ndarray): Bad pixel mask for the image.
+        psf (numpy.ndarray): PSF after shifting, resizing, and normalization.
+        zero_point (float): Flux based zero point of the image
+    """
 
     def __new__(cls, image_filename, psf_filename, mask_filename=None, n_stamps=1,
                 saturation=None, variance=None, read_noise=0, registration_noise=(0, 0)):
