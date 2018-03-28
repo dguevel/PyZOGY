@@ -62,12 +62,12 @@ def main():
                                     reference_variance=args.reference_variance,
                                     gain_ratio=args.gain_ratio,
                                     gain_mask=args.gain_mask,
-                                use_pixels=args.use_pixels,
-                                show=args.show,
-                                matched_filter=args.matched_filter,
-                                percent=args.percent,
-                                corrected=args.correct,
-                                photometry=args.photometry)
+                                    use_pixels=args.use_pixels,
+                                    show=args.show,
+                                    matched_filter=args.matched_filter,
+                                    percent=args.percent,
+                                    corrected=args.correct,
+                                    photometry=args.photometry)
 
 if __name__ == '__main__':
     main()
