@@ -83,8 +83,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
 
     science = np.ma.array(science_raw, mask=science_mask, copy=True)
     reference = np.ma.array(reference_raw, mask=reference_mask, copy=True)
-    science_std = np.ma.std(science)
-    reference_std = np.ma.std(reference)
+    science_std, _ = fit_noise(science)
+    reference_std, _ = fit_noise(reference)
     if use_pixels:
         # remove pixels less than sigma_cut above sky level to speed fitting
         science.mask[science <= np.percentile(science.compressed(), percent)] = True#sigma_cut * science_std] = True
@@ -104,6 +104,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
             sep.set_extract_pixstack(pixstack_limit)
         science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
         reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=sigma_cut, err=reference_std, mask=np.ascontiguousarray(reference.mask))
+        science_sources = science_sources[science_sources['errx2'] != np.inf] # exclude partially masked sources
+        reference_sources = reference_sources[reference_sources['errx2'] != np.inf]
         dx = science_sources['x'] - reference_sources['x'][:, np.newaxis]
         dy = science_sources['y'] - reference_sources['y'][:, np.newaxis]
         separation = np.sqrt(dx**2 + dy**2)
@@ -118,6 +120,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         logging.info('Found {0} stars in common for gain matching'.format(science_flatten.size))
         if science_flatten.size <= 1:
             logging.error('No stars in common at {0}-sigma; lower and try again'.format(sigma_cut))
+            raise ValueError()
 
     if show:
         plt.ion()
@@ -234,13 +237,11 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         reference_mask_convolved = reference_mask_convolved[: old_size[0], : old_size[1]]
 
         # do a linear robust regression between convolved image
-        gain0 = gain
-        sigma = sigma_cut
-
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                           reference_mask_convolved, sigma, use_pixels, show, percent)
+                           reference_mask_convolved, sigma_cut, use_pixels, show, percent)
         robust_fit = stats.RLM(y, stats.add_constant(x), stats.robust.norms.TukeyBiweight()).fit()
         parameters = robust_fit.params
+        gain0 = gain
         gain = parameters[-1]
         if show:
             xfit = np.arange(np.max(x))
