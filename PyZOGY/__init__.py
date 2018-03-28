@@ -20,16 +20,17 @@ class BaseImage(numpy.ma.MaskedArray):
     write(filename)
         Write to a FITS file.
     """
-    def __new__(cls, array=()):
+    def __new__(cls, data, **kwargs):
 
-        obj = numpy.asarray(array).view(cls)
-        obj._fft_array = None
+        obj = numpy.asarray(data, **kwargs).view(cls)
+        obj._fft = None
         return obj
 
 
     def __array_finalize__(self, obj):
         if obj is None:
             return
+        obj._fft = getattr(obj, '_fft', None)
 
 
     def fft(self):
@@ -42,7 +43,7 @@ class BaseImage(numpy.ma.MaskedArray):
         """
 
         if self._fft == None:
-            self._fft = np.fft.fft2(self)
+            self._fft = numpy.fft.fft2(self)
         return self._fft
 
 
