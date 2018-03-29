@@ -23,7 +23,7 @@ class BaseImage(numpy.ma.MaskedArray):
 
     def __new__(cls, data, **kwargs):
 
-        obj = numpy.asarray(data, **kwargs).view(cls)
+        obj = numpy.ma.MaskedArray(data, **kwargs)
         obj._fft = None
         obj._fft_pad = None
 
@@ -84,6 +84,21 @@ class BaseImage(numpy.ma.MaskedArray):
 
 
 class PSF(BaseImage):
+    def __new__(cls, data, **kwargs):
+
+        obj = BaseImage(data, **kwargs).view(cls)
+        obj._fft = None
+        obj._fft_pad = None
+
+        return obj
+
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        obj._fft = getattr(obj, '_fft', None)
+        obj._fft_pad= getattr(obj, '_pad', None)
+
     def resize(self, shape):
         """
         Resize centered psf to larger shape.
@@ -108,7 +123,7 @@ class PSF(BaseImage):
             if (shape[1] - psf.shape[1]) % 2 != 0:
                 shape_diff[1][1] += 1
 
-            padding = ((shape_diff[0][0], shape_diff[0][1]), shape_diff[1][0], shape_diff[1][1]))
+            padding = ((shape_diff[0][0], shape_diff[0][1]), (shape_diff[1][0], shape_diff[1][1]))
 
             self._extended = np.pad(psf, padding, mode='constant', constant_values=0.)
         return psf_extended
