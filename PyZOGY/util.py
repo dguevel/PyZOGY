@@ -99,7 +99,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         if science_flatten.size == 0:
             logging.error('No pixels in common at this percentile ({0}); lower and try again'.format(percent))
     else:
-        pixstack_limit = np.product(science.shape) // 20
+        pixstack_limit = science.size // 20
         if pixstack_limit > 300000:
             sep.set_extract_pixstack(pixstack_limit)
         science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
@@ -118,8 +118,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         science_flatten = science_sources['flux'][inds][matches]
         reference_flatten = reference_sources['flux'][matches]
         logging.info('Found {0} stars in common for gain matching'.format(science_flatten.size))
-        if science_flatten.size <= 1:
-            logging.error('No stars in common at {0}-sigma; lower and try again'.format(sigma_cut))
+        if science_flatten.size <= 2:
+            logging.error('Too few stars in common at {0}-sigma; lower and try again'.format(sigma_cut))
             raise ValueError()
 
     if show:
@@ -142,7 +142,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         
         plt.figure(3)
         plt.clf()
-        plt.plot(reference_flatten, science_flatten, '.')
+        plt.loglog(reference_flatten, science_flatten, '.')
         plt.xlabel('Reference')
         plt.ylabel('Science')
 
@@ -244,8 +244,8 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         gain0 = gain
         gain = parameters[-1]
         if show:
-            xfit = np.arange(np.max(x))
-            plt.plot(xfit, gain*xfit)
+            xfit = np.logspace(np.log10(np.min(x)), np.log10(np.max(x)))
+            plt.plot(xfit, robust_fit.predict(stats.add_constant(xfit)))
             plt.pause(0.1)
 
         logging.info('Iteration {0}: Gain = {1}'.format(i, gain))
