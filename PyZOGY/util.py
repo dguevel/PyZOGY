@@ -87,8 +87,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
     reference_std, _ = fit_noise(reference)
     if use_pixels:
         # remove pixels less than sigma_cut above sky level to speed fitting
-        science.mask[science <= np.percentile(science.compressed(), percent)] = True#sigma_cut * science_std] = True
-        reference.mask[reference <= np.percentile(reference.compressed(), percent)] = True#sigma_cut * reference_std] = True
+        science.mask[science <= np.percentile(science.compressed(), percent)] = True
+        reference.mask[reference <= np.percentile(reference.compressed(), percent)] = True
 
         # flatten into 1d arrays of good pixels
         science.mask |= reference.mask
@@ -174,7 +174,7 @@ def pad_to_power2(data, value='median'):
 
 
 def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=10e-6,
-                      max_iterations=5, sigma_cut=5, use_pixels=False, show=False, percent=99):
+                      max_iterations=5, sigma_cut=5, use_pixels=False, show=False, percent=99, use_mask=True):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -211,14 +211,15 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         denominator += reference_std ** 2 * gain ** 2 * abs(science_psf_fft) ** 2
         difference_psf_fft = gain * science_psf_fft * reference_psf_fft / (difference_zero_point * np.sqrt(denominator))
 
-        # convolve masks with difference psf to mask all pixels within a psf radius
-        # this is important to prevent convolutions of saturated pixels from affecting the fit
-        science_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.fft2(science_mask))
-        science_mask_convolved[science_mask_convolved > mask_tolerance] = 1
-        science_mask_convolved = np.real(science_mask_convolved).astype(int)
-        reference_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.fft2(reference_mask))
-        reference_mask_convolved[reference_mask_convolved > mask_tolerance] = 1
-        reference_mask_convolved = np.real(reference_mask_convolved).astype(int)
+        if use_mask:
+            # convolve masks with difference psf to mask all pixels within a psf radius
+            # this is important to prevent convolutions of saturated pixels from affecting the fit
+            science_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.fft2(science_mask))
+            science_mask_convolved[science_mask_convolved > mask_tolerance] = 1
+            science_mask_convolved = np.real(science_mask_convolved).astype(int)
+            reference_mask_convolved = np.fft.ifft2(difference_psf_fft * np.fft.fft2(reference_mask))
+            reference_mask_convolved[reference_mask_convolved > mask_tolerance] = 1
+            reference_mask_convolved = np.real(reference_mask_convolved).astype(int)
 
         # do the convolutions on the images
         denominator = science_std ** 2 * abs(reference_psf_fft) ** 2
@@ -233,8 +234,12 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         # remove power of 2 padding
         science_convolved_image = science_convolved_image[: old_size[0], : old_size[1]]
         reference_convolved_image = reference_convolved_image[: old_size[0], : old_size[1]]
-        science_mask_convolved = science_mask_convolved[: old_size[0], : old_size[1]]
-        reference_mask_convolved = reference_mask_convolved[: old_size[0], : old_size[1]]
+        if use_mask:
+            science_mask_convolved = science_mask_convolved[: old_size[0], : old_size[1]]
+            reference_mask_convolved = reference_mask_convolved[: old_size[0], : old_size[1]]
+        else:
+            science_mask_convolved = None
+            reference_mask_convolved = None
 
         # do a linear robust regression between convolved image
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
