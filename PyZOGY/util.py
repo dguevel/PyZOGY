@@ -110,10 +110,12 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         dy = science_sources['y'] - reference_sources['y'][:, np.newaxis]
         separation = np.sqrt(dx**2 + dy**2)
         sigma_eqv = np.sqrt((reference_sources['a']**2 + reference_sources['b']**2) / 2.)
+        matches = (np.min(separation, axis=1) < 2. * sigma_eqv)
+        # cut unusually large/small sources (assumes most sources are real)
         med_sigma = np.median(sigma_eqv) # median sigma if all sources were circular Gaussians
         absdev_sigma = np.abs(sigma_eqv - med_sigma)
         std_sigma = np.median(absdev_sigma) * np.sqrt(np.pi / 2)
-        matches = (np.min(separation, axis=1) < 2. * sigma_eqv) & (absdev_sigma < 3 * std_sigma)
+        matches &= (absdev_sigma < 3 * std_sigma)
         inds = np.argmin(separation, axis=1)
         science_flatten = science_sources['flux'][inds][matches]
         reference_flatten = reference_sources['flux'][matches]
