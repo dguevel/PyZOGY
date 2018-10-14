@@ -14,41 +14,41 @@ else:
 
 def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99):
     """
-	Calculate the difference image using the Zackay algorithm.
-	
-	This is the main function that calculates the difference image using the 
-	Zackey, Ofek, Gal-Yam 2016. It operates on ImageClass objects defined in
-	image_class.py. The function will fit the gain ratio if not provided. 
-        Ultimately this calculates equation 13 in Zackey, Ofek, Gal-Yam 2016.
-	
-	Parameters
-	----------
-	science : PyZOGY.ImageClass
-            ImageClass instance created from the science image.
-        reference : PyZOGY.ImageClass
-            ImageClass instance created from the reference image.
-        gain_ratio : float, optional
-            Ration of the gains or flux based zero points of the two images.
-        gain_mask : str or numpy.ndarray, optional
-            Array or FITS file holding an array of pixels to use when fitting
-            the gain ratio.
-        use_pixels : bool, optional
-            Fit the gain ratio using pixels (True) or stars (False) in image.
-        show : bool, optional
-            Display debuggin plots during fitting.
-        percent : float, optional
-            Percentile cutoff to use for fitting the gain ratio. 
+    Calculate the difference image using the Zackay algorithm.
 
-        Returns
-        -------
-        difference_image : numpy.ndarray
-            The difference between science and reference images.
-	"""
+    This is the main function that calculates the difference image using the
+    Zackay, Ofek, Gal-Yam 2016. It operates on ImageClass objects defined in
+    image_class.py. The function will fit the gain ratio if not provided.
+    Ultimately this calculates equation 13 in Zackey, Ofek, Gal-Yam 2016.
+
+    Parameters
+    ----------
+    science : PyZOGY.ImageClass
+            ImageClass instance created from the science image.
+    reference : PyZOGY.ImageClass
+        ImageClass instance created from the reference image.
+    gain_ratio : float, optional
+        Ration of the gains or flux based zero points of the two images.
+    gain_mask : str or numpy.ndarray, optional
+        Array or FITS file holding an array of pixels to use when fitting
+        the gain ratio.
+    use_pixels : bool, optional
+        Fit the gain ratio using pixels (True) or stars (False) in image.
+    show : bool, optional
+        Display debuggin plots during fitting.
+    percent : float, optional
+        Percentile cutoff to use for fitting the gain ratio.
+
+    Returns
+    -------
+    difference_image : numpy.ndarray
+        The difference between science and reference images.
+    """
 
     # match the gains
     if gain_ratio == np.inf:
         if gain_mask is not None:
-	    if type(gain_mask) == str:
+            if type(gain_mask) == str:
                 gain_mask_data = fits.getdata(gain_mask)
             else:
                 gain_mask_data = gain_mask
@@ -298,7 +298,7 @@ def correct_matched_filter_image(science, reference):
     reference_source_noise = source_noise(reference, reference_kernel)
     science_registration_noise = registration_noise(science, science_kernel)
     reference_registration_noise = registration_noise(reference, reference_kernel)
-    noise = science_source_noise + reference_source_noise + science_registration_noise + reference_registration_noise 
+    noise = science_source_noise + reference_source_noise + science_registration_noise + reference_registration_noise
     return noise
 
 
@@ -332,7 +332,7 @@ def normalize_difference_image(difference, difference_image_zero_point, science,
     ----------
     difference : numpy.ndarray
         Difference image as calculated by calculate_difference_image.
-    difference_image_zero_point : numpy.ndarray
+    difference_image_zero_point : float
         Flux based zero point of the difference image above.
     science : PyZOGY.ImageClass
         ImageClass instance created from the science image.
@@ -425,7 +425,6 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
     normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference, normalization)
     save_difference_image_to_file(normalized_difference, science, normalization, output)
     save_difference_psf_to_file(difference_psf, output.replace('.fits', '.psf.fits'))
-
 
     if matched_filter:
         matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point)
