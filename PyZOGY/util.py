@@ -181,7 +181,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
 
     gain = 1.
     gain0 = 10e5
-    i = 0
+    i = 1
     # pad image to power of two to speed fft
     old_size = science.shape
     science_image = pad_to_power2(science)
