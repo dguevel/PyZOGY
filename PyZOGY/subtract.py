@@ -361,7 +361,7 @@ def normalize_difference_image(difference, difference_image_zero_point, science,
 
 def run_subtraction(science_image, reference_image, science_psf, reference_psf, output='output.fits',
                     science_mask=None, reference_mask=None, n_stamps=1, normalization='reference',
-                    science_saturation=False, reference_saturation=False, science_variance=None,
+                    science_saturation=np.inf, reference_saturation=np.inf, science_variance=None,
                     reference_variance=None, matched_filter=False, photometry=False,
                     gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99,
                     corrected=False, use_mask_for_gain=True):
