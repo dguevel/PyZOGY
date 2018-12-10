@@ -79,6 +79,7 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
     difference_image_fft -= reference_image_fft * science_psf_fft * science.zero_point
     difference_image_fft /= np.sqrt(denominator)
     difference_image = np.fft.ifft2(difference_image_fft)
+    difference_image = np.real(difference_image)
 
     return difference_image
 
@@ -460,7 +461,7 @@ def save_difference_image_to_file(difference_image, science, normalization, outp
         File to save FITS image to.
     """
 
-    hdu = fits.PrimaryHDU(np.real(difference_image))
+    hdu = fits.PrimaryHDU(difference_image)
     hdu.header = science.header.copy()
     hdu.header['PHOTNORM'] = normalization
     hdu.writeto(output, output_verify='warn', **overwrite)
