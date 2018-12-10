@@ -45,7 +45,7 @@ def fit_noise(data, n_stamps=1, mode='iqr', fname=''):
                 x_index = [x_stamp * data.shape[1] // n_stamps, (x_stamp + 1) * data.shape[1] // n_stamps]
                 stamp_data = data[y_index[0]: y_index[1], x_index[0]: x_index[1]].compressed()
                 if mode == 'iqr':
-                    quartile25, median, quartile75 = np.percentile(stamp_data, (25, 50, 75))
+                    quartile25, median, quartile75 = np.nanpercentile(stamp_data, (25, 50, 75))
                     median_small[y_stamp, x_stamp] = median
                     # 0.741301109 is a parameter that scales iqr to std
                     std_small[y_stamp, x_stamp] = 0.741301109 * (quartile75 - quartile25)
@@ -87,8 +87,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
     reference_std, _ = fit_noise(reference)
     if use_pixels:
         # remove pixels less than sigma_cut above sky level to speed fitting
-        science.mask[science <= np.percentile(science.compressed(), percent)] = True
-        reference.mask[reference <= np.percentile(reference.compressed(), percent)] = True
+        science.mask[science <= np.nanpercentile(science.compressed(), percent)] = True
+        reference.mask[reference <= np.nanpercentile(reference.compressed(), percent)] = True
 
         # flatten into 1d arrays of good pixels
         science.mask |= reference.mask
@@ -128,7 +128,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         plt.ion()
         plt.figure(1)
         plt.clf()
-        vmin, vmax = np.percentile(science, (1, 99))
+        vmin, vmax = np.nanpercentile(science, (1, 99))
         plt.imshow(science, vmin=vmin, vmax=vmax)
         plt.title('Science')
         if not use_pixels:
@@ -136,7 +136,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         
         plt.figure(2)
         plt.clf()
-        vmin, vmax = np.percentile(reference, (1, 99))
+        vmin, vmax = np.nanpercentile(reference, (1, 99))
         plt.imshow(reference, vmin=vmin, vmax=vmax)
         plt.title('Reference')
         if not use_pixels:
