@@ -12,8 +12,8 @@ else:
     overwrite = {'overwrite': True}
 
 
-def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False,
-                               percent=99, use_mask_for_gain=True, max_iterations=5):
+def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, sigma_cut=5, use_pixels=False,
+                               show=False, percent=99, use_mask_for_gain=True, max_iterations=5, size_cut=True):
     """
 	Calculate the difference image using the Zackay algorithm.
 	
@@ -55,8 +55,9 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
                 gain_mask_data = gain_mask
             science.mask[gain_mask_data == 1] = 1
             reference.mask[gain_mask_data == 1] = 1
-        science.zero_point = util.solve_iteratively(science, reference, use_pixels=use_pixels, show=show,
-                                                    percent=percent, use_mask=use_mask_for_gain, max_iterations=max_iterations)
+        science.zero_point = util.solve_iteratively(science, reference, sigma_cut=sigma_cut, use_pixels=use_pixels,
+                                                    show=show, percent=percent, use_mask=use_mask_for_gain,
+                                                    max_iterations=max_iterations, size_cut=size_cut)
     else:
         science.zero_point = gain_ratio
 

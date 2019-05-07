@@ -78,7 +78,8 @@ def interpolate_bad_pixels(image, median_size=6, fname=''):
     return interpolated_image
 
 
-def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, use_pixels=False, show=False, percent=99):
+def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, use_pixels=False, show=False,
+                percent=99, size_cut=True):
     """Join two images to fittable vectors"""
 
     science = np.ma.array(science_raw, mask=science_mask, copy=True)
@@ -111,11 +112,12 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         separation = np.sqrt(dx**2 + dy**2)
         sigma_eqv = np.sqrt((reference_sources['a']**2 + reference_sources['b']**2) / 2.)
         matches = (np.min(separation, axis=1) < 2. * sigma_eqv)
-        # cut unusually large/small sources (assumes most sources are real)
-        med_sigma = np.median(sigma_eqv) # median sigma if all sources were circular Gaussians
-        absdev_sigma = np.abs(sigma_eqv - med_sigma)
-        std_sigma = np.median(absdev_sigma) * np.sqrt(np.pi / 2)
-        matches &= (absdev_sigma < 3 * std_sigma)
+        if size_cut:
+            # cut unusually large/small sources (assumes most sources are real)
+            med_sigma = np.median(sigma_eqv) # median sigma if all sources were circular Gaussians
+            absdev_sigma = np.abs(sigma_eqv - med_sigma)
+            std_sigma = np.median(absdev_sigma) * np.sqrt(np.pi / 2)
+            matches &= (absdev_sigma < 3 * std_sigma)
         inds = np.argmin(separation, axis=1)
         science_flatten = science_sources['flux'][inds][matches]
         reference_flatten = reference_sources['flux'][matches]
@@ -175,8 +177,8 @@ def pad_to_power2(data, value='median'):
     return padded_data
 
 
-def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=10e-6,
-                      max_iterations=5, sigma_cut=5, use_pixels=False, show=False, percent=99, use_mask=True):
+def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5,
+                      sigma_cut=5, use_pixels=False, show=False, percent=99, use_mask=True, size_cut=True):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -245,7 +247,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
 
         # do a linear robust regression between convolved image
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                           reference_mask_convolved, sigma_cut, use_pixels, show, percent)
+                           reference_mask_convolved, sigma_cut, use_pixels, show, percent, size_cut)
         robust_fit = stats.RLM(y, stats.add_constant(x), stats.robust.norms.TukeyBiweight()).fit()
         parameters = robust_fit.params
         gain0 = gain
