@@ -357,7 +357,7 @@ def normalize_difference_image(difference, difference_image_zero_point, science,
     else:
         difference_image = difference
 
-    logging.info('Normalized difference saved to {}'.format(normalization))
+    logging.info('Difference normalized to {}'.format(normalization))
     return difference_image
 
 
