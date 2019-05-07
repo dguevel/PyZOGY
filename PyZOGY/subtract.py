@@ -301,7 +301,7 @@ def correct_matched_filter_image(science, reference):
     reference_source_noise = source_noise(reference, reference_kernel)
     science_registration_noise = registration_noise(science, science_kernel)
     reference_registration_noise = registration_noise(reference, reference_kernel)
-    noise = science_source_noise + reference_source_noise + science_registration_noise + reference_registration_noise 
+    noise = science_source_noise + reference_source_noise + science_registration_noise + reference_registration_noise
     return noise
 
 
@@ -421,14 +421,16 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
     """
 
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, science_variance)
-    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, reference_variance)
-    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, use_pixels, show, percent, use_mask_for_gain, max_iterations)
+    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation,
+                           reference_variance)
+    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, use_pixels, show, percent,
+                                            use_mask_for_gain, max_iterations)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
     difference_psf = calculate_difference_psf(science, reference, difference_zero_point)
-    normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference, normalization)
+    normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference,
+                                                       normalization)
     save_difference_image_to_file(normalized_difference, science, normalization, output)
     save_difference_psf_to_file(difference_psf, output.replace('.fits', '.psf.fits'))
-
 
     if matched_filter:
         matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point)
