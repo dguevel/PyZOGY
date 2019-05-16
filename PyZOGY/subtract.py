@@ -12,7 +12,7 @@ else:
     overwrite = {'overwrite': True}
 
 
-def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, sigma_cut=5, use_pixels=False,
+def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, sigma_cut=5., use_pixels=False,
                                show=False, percent=99, use_mask_for_gain=True, max_iterations=5, size_cut=True):
     """
 	Calculate the difference image using the Zackay algorithm.
@@ -33,6 +33,8 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
         gain_mask : str or numpy.ndarray, optional
             Array or FITS file holding an array of pixels to use when fitting
             the gain ratio.
+        sigma_cut : float, optional
+            Threshold (in standard deviations) to extract a star from the image (`thresh` in `sep.extract`).
         use_pixels : bool, optional
             Fit the gain ratio using pixels (True) or stars (False) in image.
         show : bool, optional
@@ -366,7 +368,7 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
                     science_mask=None, reference_mask=None, n_stamps=1, normalization='reference',
                     science_saturation=np.inf, reference_saturation=np.inf, science_variance=None,
                     reference_variance=None, matched_filter=False, photometry=False,
-                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99,
+                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, sigma_cut=5., show=False, percent=99,
                     corrected=False, use_mask_for_gain=True, max_iterations=5):
     """
     Run full subtraction given filenames and parameters
@@ -413,19 +415,25 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
         Array or FITS image of pixels to use in gain matching.
     use_pixels : bool, optional
         Use pixels (True) or stars (False) to match gains.
+    sigma_cut : float, optional
+        Threshold (in standard deviations) to extract a star from the image (`thresh` in `sep.extract`).
     show : bool, optional
         Show debugging plots.
     percent : float, optional
         Percentile cutoff for gain matching.
     corrected : bool, optional
         Noise correct matched filter image.
+    use_mask_for_gain : bool, optional
+        Set to False in order to ignore the input masks when calculating the gain ratio.
+    max_iterations : int, optional
+        Maximum number of iterations to reconvolve the images for gain matching.
     """
 
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, science_variance)
     reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation,
                            reference_variance)
-    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, use_pixels, show, percent,
-                                            use_mask_for_gain, max_iterations)
+    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, sigma_cut, use_pixels, show,
+                                            percent, use_mask_for_gain, max_iterations)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
     difference_psf = calculate_difference_psf(science, reference, difference_zero_point)
     normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference,

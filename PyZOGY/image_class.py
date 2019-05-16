@@ -35,12 +35,17 @@ class ImageClass(np.ndarray):
         zero_point (float): Flux based zero point of the image
     """
 
-    def __new__(cls, image_filename, psf_filename, header=None, mask_filename=None, n_stamps=1,
+    def __new__(cls, image_filename, psf_filename, mask_filename=None, n_stamps=1,
                 saturation=np.inf, variance=None, read_noise=0, registration_noise=(0, 0)):
-        if isinstance(image_filename, str):
+        if isinstance(image_filename, str):  # filename
             raw_image, header = fits.getdata(image_filename, header=True)
-        else:
+        elif hasattr(image_filename, 'header'):  # FITS HDU or astropy CCDData
+            raw_image = image_filename.data
+            header = image_filename.header
+            image_filename = 'IMAGE_IN_MEMORY'
+        else:  # numpy array
             raw_image = image_filename
+            header = None
             image_filename = 'IMAGE_IN_MEMORY'
         if isinstance(psf_filename, str):
             raw_psf = fits.getdata(psf_filename)

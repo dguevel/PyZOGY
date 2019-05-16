@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.ndimage
 import statsmodels.api as stats
-import matplotlib.pyplot as plt
 import sep
 import logging
 
@@ -78,7 +77,7 @@ def interpolate_bad_pixels(image, median_size=6, fname=''):
     return interpolated_image
 
 
-def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, use_pixels=False, show=False,
+def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut=5., use_pixels=False, show=False,
                 percent=99, size_cut=True):
     """Join two images to fittable vectors"""
 
@@ -87,7 +86,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
     science_std, _ = fit_noise(science)
     reference_std, _ = fit_noise(reference)
     if use_pixels:
-        # remove pixels less than sigma_cut above sky level to speed fitting
+        # remove pixels less than `percent` percentile above sky level to speed fitting
         science.mask[science <= np.nanpercentile(science.compressed(), percent)] = True
         reference.mask[reference <= np.nanpercentile(reference.compressed(), percent)] = True
 
@@ -127,6 +126,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
             raise ValueError()
 
     if show:
+        import matplotlib.pyplot as plt
+
         plt.ion()
         plt.figure(1)
         plt.clf()
@@ -178,7 +179,7 @@ def pad_to_power2(data, value='median'):
 
 
 def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=10e-6, max_iterations=5,
-                      sigma_cut=5, use_pixels=False, show=False, percent=99, use_mask=True, size_cut=True):
+                      sigma_cut=5., use_pixels=False, show=False, percent=99, use_mask=True, size_cut=True):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -253,6 +254,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
         gain0 = gain
         gain = parameters[-1]
         if show:
+            import matplotlib.pyplot as plt
             xfit = np.logspace(np.log10(np.min(x)), np.log10(np.max(x)))
             plt.plot(xfit, robust_fit.predict(stats.add_constant(xfit)))
             plt.pause(0.1)
