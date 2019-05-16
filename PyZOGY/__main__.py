@@ -4,6 +4,7 @@ import PyZOGY.subtract
 import numpy as np
 import logging
 
+
 def main():
     parser = argparse.ArgumentParser(description="Subtract images using ZOGY algorithm.")
 
@@ -33,15 +34,21 @@ def main():
     parser.add_argument('--gain-mask', help='Additional mask for pixels not to be used in gain matching')
     parser.add_argument('--use-pixels', action='store_true', help='Use pixels for gain matching instead of stars')
     parser.add_argument('--show', action='store_true', help='Show plots during for gain matching')
+    parser.add_argument('--sigma-cut', help='Threshold (in standard deviations) to extract a star from the image',
+                        default=5., type=float)
+    parser.add_argument('--no-mask-for-gain', help='Ignore the input masks when calculating the gain ratio',
+                        action='store_false', dest='use_mask_for_gain')
+    parser.add_argument('--max-iterations', default=5, type=int,
+                        help='Maximum number of iterations to reconvolve the images for gain matching')
+    parser.add_argument('--size-cut', action='store_true',
+                        help='Ignore unusually large/small sources for gain matching (assumes most sources are real)')
 
     parser.add_argument('--matched-filter', help='Output filename for matched filter image')
     parser.add_argument('--correct', action='store_true', help='Correct matched filter image with noise')
     parser.add_argument('--photometry', action='store_true', help='Correct matched filter image to do photometry')
 
     parser.add_argument('--log', dest='log', help='Log output file', default='pyzogy.log')
-    parser.add_argument('--percent', dest='percent', help='Pixel percentile for gain matching on pixels',
-                        default=99)
-
+    parser.add_argument('--percent', dest='percent', help='Pixel percentile for gain matching on pixels', default=99)
 
     args = parser.parse_args()
 
@@ -67,7 +74,12 @@ def main():
                                     matched_filter=args.matched_filter,
                                     percent=args.percent,
                                     corrected=args.correct,
-                                    photometry=args.photometry)
+                                    photometry=args.photometry,
+                                    sigma_cut=args.sigma_cut,
+                                    use_mask_for_gain=args.use_mask_for_gain,
+                                    max_iterations=args.max_iterations,
+                                    size_cut=args.size_cut)
+
 
 if __name__ == '__main__':
     main()

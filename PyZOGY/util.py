@@ -104,7 +104,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
             sep.set_extract_pixstack(pixstack_limit)
         science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
         reference_sources = sep.extract(np.ascontiguousarray(reference.data), thresh=sigma_cut, err=reference_std, mask=np.ascontiguousarray(reference.mask))
-        science_sources = science_sources[science_sources['errx2'] != np.inf] # exclude partially masked sources
+        science_sources = science_sources[science_sources['errx2'] != np.inf]  # exclude partially masked sources
         reference_sources = reference_sources[reference_sources['errx2'] != np.inf]
         dx = science_sources['x'] - reference_sources['x'][:, np.newaxis]
         dy = science_sources['y'] - reference_sources['y'][:, np.newaxis]
@@ -113,7 +113,7 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         matches = (np.min(separation, axis=1) < 2. * sigma_eqv)
         if size_cut:
             # cut unusually large/small sources (assumes most sources are real)
-            med_sigma = np.median(sigma_eqv) # median sigma if all sources were circular Gaussians
+            med_sigma = np.median(sigma_eqv)  # median sigma if all sources were circular Gaussians
             absdev_sigma = np.abs(sigma_eqv - med_sigma)
             std_sigma = np.median(absdev_sigma) * np.sqrt(np.pi / 2)
             matches &= (absdev_sigma < 3 * std_sigma)
@@ -170,11 +170,11 @@ def pad_to_power2(data, value='median'):
     elif value == 'bool':
         constant = False
     n = 0
-    defecit = [0, 0]
+    deficit = [0, 0]
     while (data.shape[0] > (2 ** n)) or (data.shape[1] > (2 ** n)):
         n += 1
-        defecit = [(2 ** n) - data.shape[0], (2 ** n) - data.shape[1]]
-    padded_data = np.pad(data, ((0, defecit[0]), (0, defecit[1])), mode='constant', constant_values=constant)
+        deficit = [(2 ** n) - data.shape[0], (2 ** n) - data.shape[1]]
+    padded_data = np.pad(data, ((0, deficit[0]), (0, deficit[1])), mode='constant', constant_values=constant)
     return padded_data
 
 
