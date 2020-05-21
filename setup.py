@@ -10,7 +10,7 @@ setup(
 	entry_points = {'console_scripts': ['pyzogy = PyZOGY.__main__ : main']},
     license='LICENSE.txt',
     description='PyZOGY is a Python implementation of the ZOGY algorithm.',
-    requires=['numpy', 'astropy', 'scipy', 'statsmodels', 'matplotlib', 'sep'],
+    install_requires=['numpy>=1.12', 'astropy', 'scipy', 'statsmodels', 'matplotlib', 'sep'],
     packages=['PyZOGY'],
 	test_suite = 'PyZOGY.test'
 )
