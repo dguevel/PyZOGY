@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.ndimage
+from astropy.convolution import convolve, Gaussian2DKernel
 import statsmodels.api as stats
 import sep
 import logging
@@ -11,7 +12,7 @@ def mask_saturated_pix(image, saturation=np.inf, input_mask=None, fname=''):
     if input_mask is None:
         input_mask = np.zeros(image.shape)
 
-    input_mask[image >= saturation] = 1
+    input_mask[np.isnan(image) | (image >= saturation)] = 1
     input_mask = input_mask.astype(bool)
 
     logging.info('{0}Masked {1} saturated pixels'.format(fname + ':', np.size(np.where(input_mask))))
@@ -66,12 +67,9 @@ def fit_noise(data, n_stamps=1, mode='iqr', fname=''):
 def interpolate_bad_pixels(image, median_size=6, fname=''):
     """Interpolate over bad pixels using a global median; needs a mask"""
 
-    # from http://stackoverflow.com/questions/18951500/automatically-remove-hot-dead-pixels-from-an-image-in-python
-    pix = np.transpose(np.where(image.mask))
-    blurred = scipy.ndimage.median_filter(image, size=median_size)
-    interpolated_image = np.copy(image)
-    for y, x in pix:
-        interpolated_image[y, x] = blurred[y, x]
+    interpolated_image = image.astype(float).filled(np.nan)
+    blurred = convolve(interpolated_image, Gaussian2DKernel(median_size))
+    interpolated_image[image.mask] = blurred[image.mask]
 
     logging.info('{0}Interpolated {1} pixels'.format(fname + ':', np.size(np.where(image.mask))))
     return interpolated_image
