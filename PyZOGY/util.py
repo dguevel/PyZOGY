@@ -78,7 +78,7 @@ def interpolate_bad_pixels(image, median_size=6, fname=''):
     return interpolated_image
 
 
-def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, use_pixels=False, show=False, percent=99):
+def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_cut, use_pixels=False, show=False, percent=99, pixstack_limit=None):
     """Join two images to fittable vectors"""
 
     science = np.ma.array(science_raw, mask=science_mask, copy=True)
@@ -99,7 +99,8 @@ def join_images(science_raw, science_mask, reference_raw, reference_mask, sigma_
         if science_flatten.size == 0:
             logging.error('No pixels in common at this percentile ({0}); lower and try again'.format(percent))
     else:
-        pixstack_limit = science.size // 20
+        if pixstack_limit is None:
+            pixstack_limit = science.size // 20
         if pixstack_limit > 300000:
             sep.set_extract_pixstack(pixstack_limit)
         science_sources = sep.extract(np.ascontiguousarray(science.data), thresh=sigma_cut, err=science_std, mask=np.ascontiguousarray(science.mask))
@@ -176,7 +177,7 @@ def pad_to_power2(data, value='median'):
 
 
 def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=10e-6,
-                      max_iterations=5, sigma_cut=5, use_pixels=False, show=False, percent=99, use_mask=True):
+                      max_iterations=5, sigma_cut=5, use_pixels=False, show=False, percent=99, use_mask=True, pixstack_limit=None):
     """Solve for linear fit iteratively"""
 
     gain = 1.
@@ -245,7 +246,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
 
         # do a linear robust regression between convolved image
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                           reference_mask_convolved, sigma_cut, use_pixels, show, percent)
+                           reference_mask_convolved, sigma_cut, use_pixels, show, percent, pixstack_limit=pixstack_limit)
         robust_fit = stats.RLM(y, stats.add_constant(x), stats.robust.norms.TukeyBiweight()).fit()
         parameters = robust_fit.params
         gain0 = gain

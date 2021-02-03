@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--log', dest='log', help='Log output file', default='pyzogy.log')
     parser.add_argument('--percent', dest='percent', help='Pixel percentile for gain matching on pixels',
                         default=99)
-
+    parser.add_argument('--pixstack-limit', type=int, help='Modify set_extract_pixstack in Sep')
 
     args = parser.parse_args()
 
@@ -67,7 +67,8 @@ def main():
                                     matched_filter=args.matched_filter,
                                     percent=args.percent,
                                     corrected=args.correct,
-                                    photometry=args.photometry)
+                                    photometry=args.photometry,
+                                    pixstack_limit=args.pixstack_limit)
 
 if __name__ == '__main__':
     main()
