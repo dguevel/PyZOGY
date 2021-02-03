@@ -246,7 +246,7 @@ def solve_iteratively(science, reference, mask_tolerance=10e-5, gain_tolerance=1
 
         # do a linear robust regression between convolved image
         x, y = join_images(science_convolved_image, science_mask_convolved, reference_convolved_image, 
-                           reference_mask_convolved, sigma_cut, use_pixels, show, percent, pixstack_limit)
+                           reference_mask_convolved, sigma_cut, use_pixels, show, percent, pixstack_limit=pixstack_limit)
         robust_fit = stats.RLM(y, stats.add_constant(x), stats.robust.norms.TukeyBiweight()).fit()
         parameters = robust_fit.params
         gain0 = gain
