@@ -25,7 +25,7 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
     Parameters
     ----------
     science : PyZOGY.ImageClass
-            ImageClass instance created from the science image.
+        ImageClass instance created from the science image.
     reference : PyZOGY.ImageClass
         ImageClass instance created from the reference image.
     gain_ratio : float, optional
