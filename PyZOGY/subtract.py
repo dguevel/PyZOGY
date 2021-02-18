@@ -12,19 +12,21 @@ else:
     overwrite = {'overwrite': True}
 
 
-def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99, use_mask_for_gain=True, pixstack_limit=None):
+def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=None, sigma_cut=5., use_pixels=False,
+                               show=False, percent=99, use_mask_for_gain=True, max_iterations=5, size_cut=True,
+                               pixstack_limit=None):
     """
     Calculate the difference image using the Zackay algorithm.
 
     This is the main function that calculates the difference image using the
     Zackay, Ofek, Gal-Yam 2016. It operates on ImageClass objects defined in
     image_class.py. The function will fit the gain ratio if not provided.
-    Ultimately this calculates equation 13 in Zackey, Ofek, Gal-Yam 2016.
+    Ultimately this calculates equation 13 in Zackay, Ofek, Gal-Yam 2016.
 
     Parameters
     ----------
     science : PyZOGY.ImageClass
-            ImageClass instance created from the science image.
+        ImageClass instance created from the science image.
     reference : PyZOGY.ImageClass
         ImageClass instance created from the reference image.
     gain_ratio : float, optional
@@ -32,12 +34,20 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
     gain_mask : str or numpy.ndarray, optional
         Array or FITS file holding an array of pixels to use when fitting
         the gain ratio.
+    sigma_cut : float, optional
+        Threshold (in standard deviations) to extract a star from the image (`thresh` in `sep.extract`).
     use_pixels : bool, optional
         Fit the gain ratio using pixels (True) or stars (False) in image.
     show : bool, optional
         Display debuggin plots during fitting.
     percent : float, optional
         Percentile cutoff to use for fitting the gain ratio.
+    use_mask_for_gain : bool, optional
+        Set to False in order to ignore the input masks when calculating the gain ratio.
+    max_iterations : int, optional
+        Maximum number of iterations to reconvolve the images for gain matching.
+    size_cut : bool, optinal
+        Ignore unusually large/small sources for gain matching (assumes most sources are real).
     pixstack_limit : int, optional
         Number of active object pixels in Sep, set with sep.set_extract_pixstack
 
@@ -56,8 +66,10 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
                 gain_mask_data = gain_mask
             science.mask[gain_mask_data == 1] = 1
             reference.mask[gain_mask_data == 1] = 1
-        science.zero_point = util.solve_iteratively(science, reference, use_pixels=use_pixels, show=show,
-                                                    percent=percent, use_mask=use_mask_for_gain, pixstack_limit=pixstack_limit)
+        science.zero_point = util.solve_iteratively(science, reference, sigma_cut=sigma_cut, use_pixels=use_pixels,
+                                                    show=show, percent=percent, use_mask=use_mask_for_gain,
+                                                    max_iterations=max_iterations, size_cut=size_cut,
+                                                    pixstack_limit=pixstack_limit)
     else:
         science.zero_point = gain_ratio
 
@@ -80,6 +92,7 @@ def calculate_difference_image(science, reference, gain_ratio=np.inf, gain_mask=
     difference_image_fft -= reference_image_fft * science_psf_fft * science.zero_point
     difference_image_fft /= np.sqrt(denominator)
     difference_image = np.fft.ifft2(difference_image_fft)
+    difference_image = np.real(difference_image)
 
     return difference_image
 
@@ -89,7 +102,7 @@ def calculate_difference_image_zero_point(science, reference):
     Calculate the flux based zero point of the difference image.
     
     Calculate the difference image flux based zero point using equation 15 of 
-    Zackey, Ofek, Gal-Yam 2016.
+    Zackay, Ofek, Gal-Yam 2016.
 
     Parameters
     ----------
@@ -116,7 +129,7 @@ def calculate_difference_psf(science, reference, difference_image_zero_point):
     """
     Calculate the PSF of the difference image.
     
-    Calculactes the PSF of the difference image using equation 17 of Zackey,
+    Calculactes the PSF of the difference image using equation 17 of Zackay,
     Ofek, Gal-Yam 2016.
 
     Parameters
@@ -150,7 +163,7 @@ def calculate_matched_filter_image(difference_image, difference_psf, difference_
     """
     Calculate the matched filter difference image.
     
-    Calculates the matched filter difference image described in Zackey, Ofek, 
+    Calculates the matched filter difference image described in Zackay, Ofek, 
     Gal-Yam 2016 defined in equation 16.
 
     Parameters
@@ -179,7 +192,7 @@ def source_noise(image, kernel):
     Calculate source noise correction for matched filter image
     
     Calculate the noise due to the sources in an image. The output is used by
-    noise corrected matched filter image. This is equation 26 in Zackey, Ofek,
+    noise corrected matched filter image. This is equation 26 in Zackay, Ofek,
     Gal-Yam 2016.
 
     Parameters
@@ -210,7 +223,7 @@ def noise_kernels(science, reference):
     
     The kernels calculated here are used in the convolution of the noise images
     that are used in the noise corrected matched filter images. They are 
-    defined in equation 28 and 29 of Zackey, Ofek, Gal-Yam 2016.
+    defined in equation 28 and 29 of Zackay, Ofek, Gal-Yam 2016.
 
     Parameters
     science : PyZOGY.ImageClass
@@ -279,7 +292,7 @@ def correct_matched_filter_image(science, reference):
     Calculate the noise corrected matched filter image
     
     Computes the total noise used for the noise corrected matched filter image
-    as defined in equation 25 of Zackey, Ofek, Gal-Yam 2016. This will work
+    as defined in equation 25 of Zackay, Ofek, Gal-Yam 2016. This will work
     with the default read_noise and registration_noise, but it may not give
     a meaningful result.
 
@@ -357,16 +370,16 @@ def normalize_difference_image(difference, difference_image_zero_point, science,
     else:
         difference_image = difference
 
-    logging.info('Normalized difference saved to {}'.format(normalization))
+    logging.info('Difference normalized to {}'.format(normalization))
     return difference_image
 
 
 def run_subtraction(science_image, reference_image, science_psf, reference_psf, output='output.fits',
                     science_mask=None, reference_mask=None, n_stamps=1, normalization='reference',
-                    science_saturation=False, reference_saturation=False, science_variance=None,
+                    science_saturation=np.inf, reference_saturation=np.inf, science_variance=None,
                     reference_variance=None, matched_filter=False, photometry=False,
-                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, show=False, percent=99,
-                    corrected=False, use_mask_for_gain=True, pixstack_limit=None):
+                    gain_ratio=np.inf, gain_mask=None, use_pixels=False, sigma_cut=5., show=False, percent=99,
+                    corrected=False, use_mask_for_gain=True, max_iterations=5, size_cut=False, pixstack_limit=None):
     """
     Run full subtraction given filenames and parameters
     
@@ -412,22 +425,33 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
         Array or FITS image of pixels to use in gain matching.
     use_pixels : bool, optional
         Use pixels (True) or stars (False) to match gains.
+    sigma_cut : float, optional
+        Threshold (in standard deviations) to extract a star from the image (`thresh` in `sep.extract`).
     show : bool, optional
         Show debugging plots.
     percent : float, optional
         Percentile cutoff for gain matching.
     corrected : bool, optional
         Noise correct matched filter image.
+    use_mask_for_gain : bool, optional
+        Set to False in order to ignore the input masks when calculating the gain ratio.
+    max_iterations : int, optional
+        Maximum number of iterations to reconvolve the images for gain matching.
+    size_cut : bool, optinal
+        Ignores unusually large/small sources for gain matching (assumes most sources are real).
     pixstack_limit : int
         Number of active object pixels in Sep, set with sep.set_extract_pixstack
     """
 
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, science_variance)
-    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation, reference_variance)
-    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, use_pixels, show, percent, use_mask_for_gain, pixstack_limit=pixstack_limit)
+    reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation,
+                           reference_variance)
+    difference = calculate_difference_image(science, reference, gain_ratio, gain_mask, sigma_cut, use_pixels, show,
+                                            percent, use_mask_for_gain, max_iterations, size_cut, pixstack_limit)
     difference_zero_point = calculate_difference_image_zero_point(science, reference)
     difference_psf = calculate_difference_psf(science, reference, difference_zero_point)
-    normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference, normalization)
+    normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference,
+                                                       normalization)
     save_difference_image_to_file(normalized_difference, science, normalization, output)
     save_difference_psf_to_file(difference_psf, output.replace('.fits', '.psf.fits'))
 
@@ -462,7 +486,7 @@ def save_difference_image_to_file(difference_image, science, normalization, outp
         File to save FITS image to.
     """
 
-    hdu = fits.PrimaryHDU(np.real(difference_image))
+    hdu = fits.PrimaryHDU(difference_image)
     hdu.header = science.header.copy()
     hdu.header['PHOTNORM'] = normalization
     hdu.writeto(output, output_verify='warn', **overwrite)

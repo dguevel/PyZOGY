@@ -29,18 +29,31 @@ class ImageClass(np.ndarray):
         background_std (float): Standard deviation of the image.
         image_filename (str): Filename of the image FITS.
         psf_filename (str): Filename of the PSF FITS.
-        saturation (float): Maxiumum usable value in the FITS image.
+        saturation (float): Maximum usable value in the FITS image.
         mask (numpy.ndarray): Bad pixel mask for the image.
         psf (numpy.ndarray): PSF after shifting, resizing, and normalization.
         zero_point (float): Flux based zero point of the image
     """
 
     def __new__(cls, image_filename, psf_filename, mask_filename=None, n_stamps=1,
-                saturation=None, variance=None, read_noise=0, registration_noise=(0, 0)):
-        raw_image, header = fits.getdata(image_filename, header=True)
-        raw_psf = fits.getdata(psf_filename)
+                saturation=np.inf, variance=None, read_noise=0, registration_noise=(0, 0)):
+        if isinstance(image_filename, str):  # filename
+            raw_image, header = fits.getdata(image_filename, header=True)
+        elif hasattr(image_filename, 'header'):  # FITS HDU or astropy CCDData
+            raw_image = image_filename.data
+            header = image_filename.header
+            image_filename = 'IMAGE_IN_MEMORY'
+        else:  # numpy array
+            raw_image = image_filename
+            header = None
+            image_filename = 'IMAGE_IN_MEMORY'
+        if isinstance(psf_filename, str):
+            raw_psf = fits.getdata(psf_filename)
+        else:
+            raw_psf = psf_filename
+            psf_filename = 'PSF_IN_MEMORY'
         psf = util.center_psf(util.resize_psf(raw_psf, raw_image.shape), fname=image_filename) / np.sum(raw_psf)
-        if mask_filename is not None:
+        if isinstance(mask_filename, str):
             mask = fits.getdata(mask_filename)
         else:
             mask = mask_filename
