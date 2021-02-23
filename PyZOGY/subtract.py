@@ -398,7 +398,7 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
     reference_psf : numpy.ndarray
         PSF of the reference image.
     output : str, optional, optional
-        File name to save image to.
+        File name to save image to. Set to None to avoid writing output.
     science_mask : str, optional
         Name of the FITS file holding the science image mask.
     reference_mask : str, optional
@@ -441,8 +441,13 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
         Ignores unusually large/small sources for gain matching (assumes most sources are real).
     pixstack_limit : int
         Number of active object pixels in Sep, set with sep.set_extract_pixstack
+        
+    Returns
+    -------
+    difference_image : numpy.ndarray
+        The difference between science and reference images.
     """
-
+    
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, science_variance)
     reference = ImageClass(reference_image, reference_psf, reference_mask, n_stamps, reference_saturation,
                            reference_variance)
@@ -452,8 +457,10 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
     difference_psf = calculate_difference_psf(science, reference, difference_zero_point)
     normalized_difference = normalize_difference_image(difference, difference_zero_point, science, reference,
                                                        normalization)
-    save_difference_image_to_file(normalized_difference, science, normalization, output)
-    save_difference_psf_to_file(difference_psf, output.replace('.fits', '.psf.fits'))
+
+    if output is not None:
+        save_difference_image_to_file(normalized_difference, science, normalization, output)
+        save_difference_psf_to_file(difference_psf, output.replace('.fits', '.psf.fits'))
 
     if matched_filter:
         matched_filter_image = calculate_matched_filter_image(difference, difference_psf, difference_zero_point)
@@ -465,6 +472,8 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
             matched_filter_image /= np.sqrt(correct_matched_filter_image(science, reference))
         fits.writeto(matched_filter, np.real(matched_filter_image), science.header, output_verify='warn', **overwrite)
         logging.info('Wrote matched filter image to {}'.format(matched_filter))
+            
+    return normalized_difference, difference_psf
 
 
 def save_difference_image_to_file(difference_image, science, normalization, output):
