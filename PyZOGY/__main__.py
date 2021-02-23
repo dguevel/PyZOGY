@@ -10,7 +10,7 @@ def main():
 
     parser.add_argument('--science-image', dest='science_image', help='Science image to subtract')
     parser.add_argument('--science-psf', dest='science_psf', help='PSF for the science image')
-    parser.add_argument('--output', dest='output', help='Output file name')
+    parser.add_argument('--output', dest='output', default='output.fits', help='Output file name')
     parser.add_argument('--science-mask', dest='science_mask', help='Mask for the science image', default=None)
     parser.add_argument('--reference-image', dest='reference_image', help='Reference image to subtract')
     parser.add_argument('--reference-psf', dest='reference_psf', help='PSF for the reference image')
