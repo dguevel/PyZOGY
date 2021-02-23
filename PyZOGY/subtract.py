@@ -444,8 +444,10 @@ def run_subtraction(science_image, reference_image, science_psf, reference_psf, 
         
     Returns
     -------
-    difference_image : numpy.ndarray
-        The difference between science and reference images.
+    normalized_difference : numpy.ndarray
+        The normalized difference between science and reference images.
+    difference_psf : numpy.ndarray
+        The difference image PSF.
     """
     
     science = ImageClass(science_image, science_psf, science_mask, n_stamps, science_saturation, science_variance)
